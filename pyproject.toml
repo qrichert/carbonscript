@@ -1,0 +1,39 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.coverage.report]
+exclude_lines = [
+    # Note: 'pass' should be included, use '...' for stubs.
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]
+
+[tool.isort]
+profile = "black"
+line_length = 88  # Optional with black profile.
+
+[tool.pylint.format]
+max-line-length = 88
+ignored-argument-names = "args|kwargs"
+max-args = 10  # Maximum number of arguments for functions / methods (default: 5).
+max-attributes = 15  # Maximum number of attributes in a class (default: 7).
+min-similarity-lines = 10  # To qualify as duplicate code (default: 4).
+output-format = "colorized"
+disable = [
+    "disallowed-name",  # Disallows names like "i, j, df, tz, foo, bar".
+    "invalid-name",  # Disallows names like "e".
+    "too-many-lines",  # Maximum 1000.
+    "too-few-public-methods",  # Minimum 2.
+    "too-many-return-statements",  # Maximum 6.
+    "too-many-arguments",  # Maximum 5.
+    "arguments-differ",  # Prevents adding arguments in overridden methods.
+    "unspecified-encoding",  # Requires explicit encoding for open().
+    "missing-function-docstring",  # Requires docstring for every public function.
+    "fixme",  # We handle TODOs in the editor.
+    "missing-module-docstring",  # Forces sometimes obvious docstrings.
+    "missing-class-docstring",  # Forces sometimes obvious docstrings.
+]

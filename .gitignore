@@ -1,0 +1,9 @@
+/.idea/
+/.venv/
+/_wip/
+__pycache__/
+.DS_Store
+*.py[co]
+*.swp
+/var/
+.coverage

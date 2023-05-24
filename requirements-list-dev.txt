@@ -1,0 +1,7 @@
+# Formatting
+black
+isort
+
+# Code Quality
+coverage  # Tests coverage.
+pylint  # Code review.
