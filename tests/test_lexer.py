@@ -4,7 +4,7 @@ import doctest
 import unittest
 
 import carbonscript.lexer
-from carbonscript.lexer import KEYWORDS, PATTERNS, Lexer, Token, TokenType
+from carbonscript.lexer import LITERAL_KEYWORDS, PATTERNS, Lexer, Token, TokenType
 
 
 def load_tests(
@@ -93,7 +93,8 @@ class TestLexer(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.script_using_all_tokens: str = (
-            'abc 123 123.456***///%+-()\n "hello"  ° ' + " ".join(KEYWORDS)
+            'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= ° '
+            + " ".join(LITERAL_KEYWORDS)
         )
         cls._assert_script_uses_all_available_types(cls.script_using_all_tokens)
 
@@ -153,29 +154,14 @@ class TestLexer(unittest.TestCase):
                 f"{token}.column != Expected{expected_token}.column",
             )
 
-    def test_token_identifier(self) -> None:
-        tokens: list[Token] = lex_script("abc_123 _0ABC")
-        self.assertListEqual(
-            tokens,
-            [
-                Token(TokenType.IDENTIFIER, "abc_123"),
-                Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.IDENTIFIER, "_0ABC"),
-                Token(TokenType.EOF),
-            ],
-        )
-
-    def test_token_number(self) -> None:
-        tokens: list[Token] = lex_script("123 123.456")
-        self.assertListEqual(
-            tokens,
-            [
-                Token(TokenType.NUMBER, "123"),
-                Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.NUMBER, "123.456"),
-                Token(TokenType.EOF),
-            ],
-        )
+    def test_token_literal_keywords(self) -> None:
+        tokens: list[Token] = lex_script(" ".join(LITERAL_KEYWORDS) + " ")
+        expected: list[Token] = []
+        for kw in LITERAL_KEYWORDS:
+            expected.append(Token(TokenType.LITKEYWORD, kw))
+            expected.append(Token(TokenType.WHITESPACE, " "))
+        expected.append(Token(TokenType.EOF))
+        self.assertListEqual(tokens, expected)
 
     def test_token_string(self) -> None:
         tokens: list[Token] = lex_script('"hello, world\n" "#2"')
@@ -215,19 +201,90 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
-    def test_token_arithmetic_operators(self) -> None:
-        tokens: list[Token] = lex_script("***///%+-()")
+    def test_token_identifier(self) -> None:
+        tokens: list[Token] = lex_script("abc_123 _0ABC")
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.POWER, "**"),
-                Token(TokenType.MULTIPLY, "*"),
-                Token(TokenType.INT_DIVIDE, "//"),
-                Token(TokenType.DIVIDE, "/"),
-                Token(TokenType.MODULUS, "%"),
+                Token(TokenType.IDENTIFIER, "abc_123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.IDENTIFIER, "_0ABC"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_number(self) -> None:
+        tokens: list[Token] = lex_script("123 123.456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "123.456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_arithmetic_operators(self) -> None:
+        tokens: list[Token] = lex_script("***///%+-")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DBLSTAR, "**"),
+                Token(TokenType.STAR, "*"),
+                Token(TokenType.DBLSLASH, "//"),
+                Token(TokenType.SLASH, "/"),
+                Token(TokenType.PERCENT, "%"),
                 Token(TokenType.PLUS, "+"),
                 Token(TokenType.MINUS, "-"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_equality(self) -> None:
+        tokens: list[Token] = lex_script("!===")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.BANGEQUAL, "!="),
+                Token(TokenType.DBLEQUAL, "=="),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_comparison(self) -> None:
+        tokens: list[Token] = lex_script(">>=<<=")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.GT, ">"),
+                Token(TokenType.GTE, ">="),
+                Token(TokenType.LT, "<"),
+                Token(TokenType.LTE, "<="),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_parentheses_empty(self) -> None:
+        tokens: list[Token] = lex_script("()")
+        self.assertListEqual(
+            tokens,
+            [
                 Token(TokenType.LPAREN, "("),
+                Token(TokenType.RPAREN, ")"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_parentheses_with_expression(self) -> None:
+        tokens: list[Token] = lex_script("(1+2)")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.LPAREN, "("),
+                Token(TokenType.NUMBER, "1"),
+                Token(TokenType.PLUS, "+"),
+                Token(TokenType.NUMBER, "2"),
                 Token(TokenType.RPAREN, ")"),
                 Token(TokenType.EOF),
             ],

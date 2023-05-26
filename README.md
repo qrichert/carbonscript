@@ -48,12 +48,56 @@ Strings of text are delimiter by double quotes:
 Parenthesis can be used to change the precedence of expressions:
 `1 + 2 * 3 = 7`, but `(1 + 2) * 3 = 9`.
 
-## Natural Precedence
+## Operator Precedence and Associativity
 
-| rank | operator            |
-| ---- | ------------------- |
-| 1    | `(`, `)`            |
-| 2    | `+x`, `-x`          |
-| 3    | `**`                |
-| 4    | `*`, `/`, `//`, `%` |
-| 5    | `+`, `-`            |
+| precedence | name       | operator                     | associativity |
+| ---------- | ---------- | ---------------------------- | ------------- |
+| 1          | equality   | `==`, `!=`                   | left          |
+| 2          | comparison | `>`, `>=`, `<`, `<=`         | left          |
+| 3          | term       | `+`, `-`                     | left          |
+| 4          | factor     | `*`, `/`, `//`, `%`          | left          |
+| 5          | power      | `**`                         | right         |
+| 6          | unary      | `+x`, `-x`, `!x`             | right         |
+| 7          | primary    | literals, keywords, `(`, `)` | left          |
+
+## Grammar
+
+```
+expression → equality
+equality   → comparison ( ( "==" | "!=" ) comparison )*
+comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term       → factor ( ( "+" | "-" ) factor )*
+factor     → power ( ( "*" | "/" | "//" | "%" ) power )*
+power      → unary ( "**" power )*
+unary      → ( "+" | "-" | "!" ) unary
+           | primary
+primary    → NUMBER | STRING | BOOLEAN | NULL
+           | "(" expression ")"
+```
+
+```
+function main() {
+    a = 2
+    b = 4
+    return a + b ** a
+}
+
+while (true) {
+    ...
+    for (x in []) {
+        ...
+    }
+}
+```
+
+```
+function main()
+    a = 2
+    b = 4
+    return a + b ** a
+
+while (true)
+    ...
+    for (x in [])
+        ...
+```

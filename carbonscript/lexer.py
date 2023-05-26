@@ -66,17 +66,24 @@ import re
 
 
 class TokenType(enum.Enum):
-    KEYWORD = "KEYWORD"  # true, false, null, etc.
+    LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
     STRING = "STRING"  # hello, world
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
-    POWER = "POWER"  # **
-    MULTIPLY = "MULTIPLY"  # *
-    INT_DIVIDE = "INT_DIVIDE"  # //
-    DIVIDE = "DIVIDE"  # /
-    MODULUS = "MODULUS"  # %
+    DBLSTAR = "DBLSTAR"  # **
+    STAR = "STAR"  # *
+    DBLSLASH = "DBLSLASH"  # //
+    SLASH = "SLASH"  # /
+    PERCENT = "PERCENT"  # %
     PLUS = "PLUS"  # +
     MINUS = "MINUS"  # -
+    DBLEQUAL = "DBLEQUAL"  # ==
+    BANGEQUAL = "BANGEQUAL"  # !=
+    GTE = "GTE"  # >=
+    GT = "GT"  # >
+    LTE = "LTE"  # <=
+    LT = "LT"  # <
+    BANG = "BANG"  # !
     LPAREN = "LPAREN"  # (
     RPAREN = "RPAREN"  # )
     DBLQUOTE = "DBLQUOTE"  # "
@@ -87,23 +94,30 @@ class TokenType(enum.Enum):
     GARBAGE = "GARBAGE"  # Shouldn't be used, will be garbage collected.
 
 
-KEYWORDS: set[str] = {
+LITERAL_KEYWORDS: set[str] = {
     "true",
     "false",
     "null",
 }
 
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [
-    (re.compile(f"({'|'.join(KEYWORDS)})"), TokenType.KEYWORD),
+    (re.compile(f"({'|'.join(LITERAL_KEYWORDS)})"), TokenType.LITKEYWORD),
     (re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"), TokenType.IDENTIFIER),
     (re.compile(r"\d+(\.\d+)?"), TokenType.NUMBER),
-    (re.compile(r"\*\*"), TokenType.POWER),
-    (re.compile(r"\*"), TokenType.MULTIPLY),
-    (re.compile(r"//"), TokenType.INT_DIVIDE),
-    (re.compile(r"/"), TokenType.DIVIDE),
-    (re.compile(r"%"), TokenType.MODULUS),
+    (re.compile(r"\*\*"), TokenType.DBLSTAR),
+    (re.compile(r"\*"), TokenType.STAR),
+    (re.compile(r"//"), TokenType.DBLSLASH),
+    (re.compile(r"/"), TokenType.SLASH),
+    (re.compile(r"%"), TokenType.PERCENT),
     (re.compile(r"\+"), TokenType.PLUS),
     (re.compile(r"-"), TokenType.MINUS),
+    (re.compile(r"=="), TokenType.DBLEQUAL),
+    (re.compile(r"!="), TokenType.BANGEQUAL),
+    (re.compile(r">="), TokenType.GTE),
+    (re.compile(r">"), TokenType.GT),
+    (re.compile(r"<="), TokenType.LTE),
+    (re.compile(r"<"), TokenType.LT),
+    (re.compile(r"!"), TokenType.BANG),
     (re.compile(r"\("), TokenType.LPAREN),
     (re.compile(r"\)"), TokenType.RPAREN),
     (re.compile(r'"'), TokenType.DBLQUOTE),
