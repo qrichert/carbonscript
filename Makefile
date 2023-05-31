@@ -29,7 +29,7 @@ l: lint
 lint: ## Run various linting tools
 	@isort $(SOURCE_DIRS)
 	@black $(SOURCE_DIRS)
-	@prettier -w *.md
+	@prettier -w *.md docs/
 
 .PHONY: t
 t: test

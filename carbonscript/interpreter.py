@@ -1,6 +1,3 @@
-"""Interpreter module."""
-
-
 from decimal import Decimal
 
 from .lexer import TokenType

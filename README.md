@@ -29,7 +29,7 @@ underlying data structure).
 
 ## Strings
 
-Strings of text are delimiter by double quotes:
+Strings of text are delimited by double quotes:
 
 - `"hello, world\n"`
 
@@ -73,31 +73,4 @@ unary      → ( "+" | "-" | "!" ) unary
            | primary
 primary    → NUMBER | STRING | BOOLEAN | NULL
            | "(" expression ")"
-```
-
-```
-function main() {
-    a = 2
-    b = 4
-    return a + b ** a
-}
-
-while (true) {
-    ...
-    for (x in []) {
-        ...
-    }
-}
-```
-
-```
-function main()
-    a = 2
-    b = 4
-    return a + b ** a
-
-while (true)
-    ...
-    for (x in [])
-        ...
 ```
