@@ -63,7 +63,13 @@ Parenthesis can be used to change the precedence of expressions:
 ## Grammar
 
 ```
-expression → equality
+program    → stmt* EOF
+stmt       → expr_stmt
+
+expr_stmt  → expr "\n"
+
+
+expr       → equality
 equality   → comparison ( ( "==" | "!=" ) comparison )*
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term       → factor ( ( "+" | "-" ) factor )*
@@ -72,5 +78,5 @@ power      → unary ( "**" power )*
 unary      → ( "+" | "-" | "!" ) unary
            | primary
 primary    → NUMBER | STRING | BOOLEAN | NULL
-           | "(" expression ")"
+           | "(" expr ")"
 ```

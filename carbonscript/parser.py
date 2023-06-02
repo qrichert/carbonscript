@@ -71,6 +71,21 @@ class UnaryExpr(Expr):
     rexpr: Expr
 
 
+@dataclass(repr=False)
+class Stmt:
+    """Statement."""
+
+
+@dataclass
+class ExprStmt(Stmt):
+    """Expression Statement."""
+
+    expression: Expr
+
+    def __repr__(self) -> str:
+        return f"ExprStmt({self.expression})"
+
+
 class Parser:
     """Build Abstract Syntax Tree (AST) from tokens.
 
@@ -79,21 +94,56 @@ class Parser:
 
     def __init__(self) -> None:
         self.tokens: list[Token] = []
-        self.ast: list[Expr] = []
+        self.statements: list[Stmt] = []
         self._pos: int = 0
 
-    def parse(self, tokens: list[Token]) -> list[Expr]:
+    def parse(self, tokens: list[Token]) -> list[Stmt]:
+        """Parse program.
+
+        program → stmt* EOF
+        """
         self.__init__()
         self.tokens = tokens
-        while self._current().type != TokenType.EOF:
-            expr: Expr = self._parse_expr()
-            self.ast.append(expr)
-        return self.ast
+        while True:
+            self._discard_empty_lines()
+            if self._current().type == TokenType.EOF:
+                break
+            stmt: Stmt = self._parse_stmt()
+            self.statements.append(stmt)
+        return self.statements
+
+    def _parse_stmt(self) -> Stmt:
+        """Parse statement.
+
+        stmt → expr_stmt
+        """
+        return self._parse_expr_stmt()
+
+    def _parse_expr_stmt(self) -> ExprStmt:
+        """Parse expression statement.
+
+        expr_stmt → expr "\n"
+        """
+        expr: Expr = self._parse_expr()
+        if (
+            not self._consume_token_if_matches(TokenType.NEWLINE)
+            and self._current().type != TokenType.EOF
+        ):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "multiple expressions on a single line",
+                self._current(),
+            )
+        return ExprStmt(expr)
+
+    def _discard_empty_lines(self) -> None:
+        while self._current().type == TokenType.NEWLINE:
+            self._consume()
 
     def _parse_expr(self) -> Expr:
         """Parse expression.
 
-        expression → equality
+        expr → equality
         """
         return self._parse_equality()
 
@@ -231,7 +281,7 @@ class Parser:
         """Parse primary.
 
         primary → NUMBER | STRING | BOOLEAN | NULL
-                | "(" expression ")"
+                | "(" expr ")"
         """
         literal: TokenType
         if literal := self._consume_token_if_matches(TokenType.NUMBER):

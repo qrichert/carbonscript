@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .interpreter import Interpreter, LiteralValue
 from .lexer import Lexer, Token
-from .parser import Expr, ParseError, Parser
+from .parser import ParseError, Parser, Stmt
 
 CMD_HISTORY_FILE: Path = Path(__file__).parent.resolve() / ".carbonscript_history.txt"
 CLEAR_CMD: str = "cls" if os.name == "nt" else "clear"
@@ -101,8 +101,8 @@ class CarbonScriptREPL(cmd.Cmd):
     @staticmethod
     def _interpret_script(script: str) -> LiteralValue:
         tokens: list[Token] = Lexer().lex(script)
-        ast: list[Expr] = Parser().parse(tokens)
-        return Interpreter().interpret(ast)
+        statements: list[Stmt] = Parser().parse(tokens)
+        return Interpreter().interpret_one(statements[0])
 
 
 def main() -> None:

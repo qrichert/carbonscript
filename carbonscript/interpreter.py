@@ -1,23 +1,26 @@
 from decimal import Decimal
 
 from .lexer import TokenType
-from .parser import BinaryExpr, Expr, GroupExpr, Literal, UnaryExpr
+from .parser import BinaryExpr, Expr, GroupExpr, Literal, Stmt, UnaryExpr
 
 LiteralValue = Decimal | str | bool | None
 
 
 class Interpreter:
     def __init__(self) -> None:
-        self.ast: list[Expr] = []
+        self.statements: list[Stmt] = []
 
-    def interpret(self, ast: list[Expr]) -> LiteralValue:
+    def interpret(self, statements: list[Stmt]) -> None:
         self.__init__()
-        self.ast = ast
+        self.statements = statements
 
-        expr: Expr
-        for expr in ast:
+        stmt: Stmt
+        for stmt in statements:
             # TODO: rename BinaryExpr BinOp -> and put it in scoped file "expr"
-            return self._interpret_expr(expr)
+            self._interpret_expr(stmt.expression)
+
+    def interpret_one(self, statement: Stmt) -> LiteralValue:
+        return self._interpret_expr(statement.expression)
 
     def _interpret_expr(self, expr: Expr) -> LiteralValue:
         if isinstance(expr, BinaryExpr):
