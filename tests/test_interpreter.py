@@ -7,7 +7,7 @@ from decimal import Decimal as D
 import carbonscript.lexer
 from carbonscript.interpreter import Interpreter, LiteralValue
 from carbonscript.lexer import Lexer, Token, TokenType
-from carbonscript.parser import BinaryExpr, ExprStmt, Literal, Parser, Stmt
+from carbonscript.parser import BinOp, ExprStmt, Literal, Parser, Stmt
 
 
 def load_tests(
@@ -35,7 +35,7 @@ class TestInterpreter(unittest.TestCase):
     def test_no_side_effects_on_input(self) -> None:
         statements: list[Stmt] = [
             ExprStmt(
-                BinaryExpr(
+                BinOp(
                     Literal(TokenType.NUMBER, D("3")),
                     TokenType.PLUS,
                     Literal(TokenType.NUMBER, D("1")),

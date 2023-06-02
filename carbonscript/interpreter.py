@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from .lexer import TokenType
-from .parser import BinaryExpr, Expr, GroupExpr, Literal, Stmt, UnaryExpr
+from .parser import BinOp, Expr, Group, Literal, Stmt, Unary
 
 LiteralValue = Decimal | str | bool | None
 
@@ -16,24 +16,23 @@ class Interpreter:
 
         stmt: Stmt
         for stmt in statements:
-            # TODO: rename BinaryExpr BinOp -> and put it in scoped file "expr"
             self._interpret_expr(stmt.expression)
 
     def interpret_one(self, statement: Stmt) -> LiteralValue:
         return self._interpret_expr(statement.expression)
 
     def _interpret_expr(self, expr: Expr) -> LiteralValue:
-        if isinstance(expr, BinaryExpr):
+        if isinstance(expr, BinOp):
             return self._interpret_binop(expr)
-        if isinstance(expr, GroupExpr):
-            return self._interpret_group(expr)
+        if isinstance(expr, Unary):
+            return self._interpret_unary_expr(expr)
         if isinstance(expr, Literal):
             return self._interpret_literal(expr)
-        if isinstance(expr, UnaryExpr):
-            return self._interpret_unary_expr(expr)
+        if isinstance(expr, Group):
+            return self._interpret_group(expr)
         raise RuntimeError
 
-    def _interpret_binop(self, binop: BinaryExpr) -> LiteralValue:
+    def _interpret_binop(self, binop: BinOp) -> LiteralValue:
         lval: LiteralValue = self._interpret_expr(binop.lexpr)
         rval: LiteralValue = self._interpret_expr(binop.rexpr)
         op: TokenType = binop.operator
@@ -66,10 +65,10 @@ class Interpreter:
                 return lval**rval
         raise RuntimeError
 
-    def _interpret_group(self, group: GroupExpr) -> LiteralValue:
+    def _interpret_group(self, group: Group) -> LiteralValue:
         return self._interpret_expr(group.expr)
 
-    def _interpret_unary_expr(self, unary: UnaryExpr) -> LiteralValue:
+    def _interpret_unary_expr(self, unary: Unary) -> LiteralValue:
         value: LiteralValue = self._interpret_expr(unary.rexpr)
         op: TokenType = unary.operator
         match op:

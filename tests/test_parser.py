@@ -7,15 +7,15 @@ from decimal import Decimal as D
 import carbonscript.parser
 from carbonscript.lexer import Lexer, Token, TokenType
 from carbonscript.parser import (
-    BinaryExpr,
+    BinOp,
     Expr,
     ExprStmt,
-    GroupExpr,
+    Group,
     Literal,
     ParseError,
     Parser,
     Stmt,
-    UnaryExpr,
+    Unary,
 )
 
 
@@ -37,6 +37,59 @@ def parse_expression(expression: str) -> Expr:
 def parse_script(script: str) -> list[Stmt]:
     tokens: list[Token] = Lexer().lex(script)
     return Parser().parse(tokens)
+
+
+class TestExpr(unittest.TestCase):
+    def test_repr_expr(self) -> None:
+        expr = Expr()
+        self.assertEqual(repr(expr), "Expr()")
+
+    def test_str_expr(self) -> None:
+        expr = Expr()
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_binop(self) -> None:
+        expr = BinOp(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.PLUS,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "BinOp(Literal(NUMBER, '42'), PLUS, Literal(NUMBER, '108'))",
+        )
+
+    def test_str_binop(self) -> None:
+        expr = BinOp(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.PLUS,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_unary(self) -> None:
+        expr = Unary(TokenType.MINUS, Literal(TokenType.NUMBER, "42"))
+        self.assertEqual(repr(expr), "Unary(MINUS, Literal(NUMBER, '42'))")
+
+    def test_str_unary(self) -> None:
+        expr = Unary(TokenType.MINUS, Literal(TokenType.NUMBER, "42"))
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_literal(self) -> None:
+        expr = Literal(TokenType.NUMBER, "42")
+        self.assertEqual(repr(expr), "Literal(NUMBER, '42')")
+
+    def test_str_literal(self) -> None:
+        expr = Literal(TokenType.NUMBER, "42")
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_group(self) -> None:
+        expr = Group(Literal(TokenType.NUMBER, "42"))
+        self.assertEqual(repr(expr), "Group(Literal(NUMBER, '42'))")
+
+    def test_str_group(self) -> None:
+        expr = Group(Literal(TokenType.NUMBER, "42"))
+        self.assertEqual(str(expr), repr(expr))
 
 
 class TestParser(unittest.TestCase):
@@ -103,8 +156,8 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_with_whitespace(self) -> None:
         self.assertEqual(
             parse_expression("3   *   6   *   9 "),
-            BinaryExpr(
-                BinaryExpr(
+            BinOp(
+                BinOp(
                     Literal(TokenType.NUMBER, D("3")),
                     TokenType.STAR,
                     Literal(TokenType.NUMBER, D("6")),
@@ -172,7 +225,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_equality_equal(self) -> None:
         self.assertEqual(
             parse_expression("1==3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.DBLEQUAL,
                 Literal(TokenType.NUMBER, D("3")),
@@ -182,7 +235,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_equality_not_equal(self) -> None:
         self.assertEqual(
             parse_expression("1!=3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.BANGEQUAL,
                 Literal(TokenType.NUMBER, D("3")),
@@ -192,7 +245,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_comparison_greater_than(self) -> None:
         self.assertEqual(
             parse_expression("1>3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.GT,
                 Literal(TokenType.NUMBER, D("3")),
@@ -202,7 +255,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_comparison_greater_than_or_equal(self) -> None:
         self.assertEqual(
             parse_expression("1>=3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.GTE,
                 Literal(TokenType.NUMBER, D("3")),
@@ -212,7 +265,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_comparison_lesser_than(self) -> None:
         self.assertEqual(
             parse_expression("1<3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.LT,
                 Literal(TokenType.NUMBER, D("3")),
@@ -222,7 +275,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_comparison_lesser_than_or_equal(self) -> None:
         self.assertEqual(
             parse_expression("1<=3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("1")),
                 TokenType.LTE,
                 Literal(TokenType.NUMBER, D("3")),
@@ -232,7 +285,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_term_addition(self) -> None:
         self.assertEqual(
             parse_expression("3+1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.PLUS,
                 Literal(TokenType.NUMBER, D("1")),
@@ -242,7 +295,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_term_subtraction(self) -> None:
         self.assertEqual(
             parse_expression("3-1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.MINUS,
                 Literal(TokenType.NUMBER, D("1")),
@@ -252,7 +305,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_factor_multiplication(self) -> None:
         self.assertEqual(
             parse_expression("3*1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.STAR,
                 Literal(TokenType.NUMBER, D("1")),
@@ -262,7 +315,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_factor_division(self) -> None:
         self.assertEqual(
             parse_expression("3/1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.SLASH,
                 Literal(TokenType.NUMBER, D("1")),
@@ -272,7 +325,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_factor_integer_division(self) -> None:
         self.assertEqual(
             parse_expression("3//1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.DBLSLASH,
                 Literal(TokenType.NUMBER, D("1")),
@@ -282,7 +335,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_factor_modulo(self) -> None:
         self.assertEqual(
             parse_expression("3%1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.PERCENT,
                 Literal(TokenType.NUMBER, D("1")),
@@ -292,7 +345,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_power(self) -> None:
         self.assertEqual(
             parse_expression("3**1"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.DBLSTAR,
                 Literal(TokenType.NUMBER, D("1")),
@@ -302,7 +355,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_unary_plus(self) -> None:
         self.assertEqual(
             parse_expression("+42"),
-            UnaryExpr(
+            Unary(
                 TokenType.PLUS,
                 Literal(TokenType.NUMBER, D("42")),
             ),
@@ -311,7 +364,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_unary_minus(self) -> None:
         self.assertEqual(
             parse_expression("-42"),
-            UnaryExpr(
+            Unary(
                 TokenType.MINUS,
                 Literal(TokenType.NUMBER, D("42")),
             ),
@@ -320,7 +373,7 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_unary_bang(self) -> None:
         self.assertEqual(
             parse_expression("!42"),
-            UnaryExpr(
+            Unary(
                 TokenType.BANG,
                 Literal(TokenType.NUMBER, D("42")),
             ),
@@ -329,8 +382,8 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_parenthesis(self) -> None:
         self.assertEqual(
             parse_expression("(7+108)"),
-            GroupExpr(
-                BinaryExpr(
+            Group(
+                BinOp(
                     Literal(TokenType.NUMBER, D("7")),
                     TokenType.PLUS,
                     Literal(TokenType.NUMBER, D("108")),
@@ -341,10 +394,10 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_precedence(self) -> None:
         self.assertEqual(
             parse_expression("7+108*9"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("7")),
                 TokenType.PLUS,
-                BinaryExpr(
+                BinOp(
                     Literal(TokenType.NUMBER, D("108")),
                     TokenType.STAR,
                     Literal(TokenType.NUMBER, D("9")),
@@ -355,8 +408,8 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_term_associativity(self) -> None:
         self.assertEqual(
             parse_expression("7+9+3"),
-            BinaryExpr(
-                BinaryExpr(
+            BinOp(
+                BinOp(
                     Literal(TokenType.NUMBER, D("7")),
                     TokenType.PLUS,
                     Literal(TokenType.NUMBER, D("9")),
@@ -369,8 +422,8 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_factor_associativity(self) -> None:
         self.assertEqual(
             parse_expression("7*9*3"),
-            BinaryExpr(
-                BinaryExpr(
+            BinOp(
+                BinOp(
                     Literal(TokenType.NUMBER, D("7")),
                     TokenType.STAR,
                     Literal(TokenType.NUMBER, D("9")),
@@ -383,10 +436,10 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_power_associativity(self) -> None:
         self.assertEqual(
             parse_expression("7**9**3"),
-            BinaryExpr(
+            BinOp(
                 Literal(TokenType.NUMBER, D("7")),
                 TokenType.DBLSTAR,
-                BinaryExpr(
+                BinOp(
                     Literal(TokenType.NUMBER, D("9")),
                     TokenType.DBLSTAR,
                     Literal(TokenType.NUMBER, D("3")),
@@ -397,9 +450,9 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_unary_associativity_even(self) -> None:
         self.assertEqual(
             parse_expression("--3"),
-            UnaryExpr(
+            Unary(
                 TokenType.MINUS,
-                UnaryExpr(
+                Unary(
                     TokenType.MINUS,
                     Literal(TokenType.NUMBER, D("3")),
                 ),
@@ -409,11 +462,11 @@ class TestParserBasicExpressions(unittest.TestCase):
     def test_unary_associativity_even_odd(self) -> None:
         self.assertEqual(
             parse_expression("---3"),
-            UnaryExpr(
+            Unary(
                 TokenType.MINUS,
-                UnaryExpr(
+                Unary(
                     TokenType.MINUS,
-                    UnaryExpr(
+                    Unary(
                         TokenType.MINUS,
                         Literal(TokenType.NUMBER, D("3")),
                     ),

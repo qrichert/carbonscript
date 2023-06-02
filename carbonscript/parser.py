@@ -18,16 +18,40 @@ class ParseError(Exception):
         super().__init__(f"{error_type} error:{token.line}:{token.column}: {message}.")
 
 
-class LiteralType(enum.Enum):
-    NUMBER = "NUMBER"
-    STRING = "STRING"
-    BOOLEAN = "BOOLEAN"
-    NULL = "NULL"
-
-
 @dataclass(repr=False)
 class Expr:
     """Expression."""
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return f"{class_name}()"
+
+
+@dataclass
+class BinOp(Expr):
+    """Operator and left/right values to operate on (e.g, `A + B`)."""
+
+    lexpr: Expr
+    operator: TokenType
+    rexpr: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        operator: str = self.operator.value
+        return f"{class_name}({self.lexpr!r}, {operator}, {self.rexpr!r})"
+
+
+@dataclass
+class Unary(Expr):
+    """Operator and right value to operate on (e.g. `-A`)"""
+
+    operator: TokenType
+    rexpr: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        operator: str = self.operator.value
+        return f"{class_name}({operator}, {self.rexpr!r})"
 
 
 @dataclass
@@ -44,31 +68,14 @@ class Literal(Expr):
 
 
 @dataclass
-class GroupExpr(Expr):
+class Group(Expr):
     """Parentheses with an expression inside (e.g., `(A + B)`."""
 
     expr: Expr
 
-
-@dataclass
-class BinaryExpr(Expr):
-    """Operator and left/right values to operate on (e.g, `A + B`)."""
-
-    lexpr: Expr
-    operator: TokenType
-    rexpr: Expr
-
     def __repr__(self) -> str:
-        operator: str = self.operator.value
-        return f"Expr({operator}, {self.lexpr!r}, {self.rexpr!r})"
-
-
-@dataclass
-class UnaryExpr(Expr):
-    """Operator and right value to operate on (e.g. `-A`)"""
-
-    operator: TokenType
-    rexpr: Expr
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({self.expr!r})"
 
 
 @dataclass(repr=False)
@@ -165,7 +172,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinaryExpr(lexpr, operator, rexpr)
+            lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_comparison(self) -> Expr:
@@ -188,7 +195,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinaryExpr(lexpr, operator, rexpr)
+            lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_term(self) -> Expr:
@@ -209,7 +216,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinaryExpr(lexpr, operator, rexpr)
+            lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_factor(self) -> Expr:
@@ -232,7 +239,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinaryExpr(lexpr, operator, rexpr)
+            lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_power(self) -> Expr:
@@ -252,7 +259,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinaryExpr(lexpr, operator, rexpr)
+            lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_unary(self) -> Expr:
@@ -274,7 +281,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            return UnaryExpr(operator, rexpr)
+            return Unary(operator, rexpr)
         return self._parse_primary()
 
     def _parse_primary(self) -> Expr:
@@ -316,7 +323,7 @@ class Parser:
                     f"unterminated group expression, missing {')'!r}",
                     self._previous(),
                 )
-            return GroupExpr(expr)
+            return Group(expr)
         raise ParseError(
             ErrorType.SYNTAX,
             f"invalid symbol {self._current().value!r}",
