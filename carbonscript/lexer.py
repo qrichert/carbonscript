@@ -59,7 +59,7 @@ PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r"\)"), TokenType.RPAREN),
     (re.compile(r'"'), TokenType.DBLQUOTE),
     (re.compile(r"\n"), TokenType.NEWLINE),
-    (re.compile(r"\s+"), TokenType.WHITESPACE),
+    (re.compile(r"[ \t]+"), TokenType.WHITESPACE),
     (re.compile(r"$"), TokenType.EOF),
 ]
 

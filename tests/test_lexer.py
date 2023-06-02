@@ -290,6 +290,32 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
+    def test_token_newline(self) -> None:
+        tokens: list[Token] = lex_script("123\n456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_newline_spaced(self) -> None:
+        tokens: list[Token] = lex_script("123    \n  456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, "    "),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.WHITESPACE, "  "),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
