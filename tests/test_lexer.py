@@ -4,7 +4,14 @@ import doctest
 import unittest
 
 import carbonscript.lexer
-from carbonscript.lexer import LITERAL_KEYWORDS, PATTERNS, Lexer, Token, TokenType
+from carbonscript.lexer import (
+    DECL_KEYWORDS,
+    LITERAL_KEYWORDS,
+    PATTERNS,
+    Lexer,
+    Token,
+    TokenType,
+)
 
 
 def load_tests(
@@ -25,12 +32,17 @@ class TestPatterns(unittest.TestCase):
         types: list[str] = [x.name for x in TokenType]
         self.assertEqual(len(types), len(set(types)))
 
+    def test_no_overlap_among_keywords(self) -> None:
+        intersection: set = set.intersection(DECL_KEYWORDS, LITERAL_KEYWORDS)
+        self.assertEqual(len(intersection), 0)
+
     def test_patterns_match_type(self) -> None:
         """Ensure every TokenType has a matching PATTERN.
 
         The aim is to avoid unused types or patterns.
 
         Exceptions:
+        *KEYWORD: Keywords are a special case of IDENTIFIER.
         STRING: Whether a char is part of a string is based on context.
         UNKNOWN: Represents a token with no matching type.
         GARBAGE: Specific to the implementation of the lexer.
@@ -38,7 +50,14 @@ class TestPatterns(unittest.TestCase):
         types: list[str] = [
             x.name
             for x in TokenType
-            if x not in (TokenType.STRING, TokenType.UNKNOWN, TokenType.GARBAGE)
+            if x
+            not in (
+                TokenType.DECLKEYWORD,
+                TokenType.LITKEYWORD,
+                TokenType.STRING,
+                TokenType.UNKNOWN,
+                TokenType.GARBAGE,
+            )
         ]
         pattern_types: list[str] = [x[1].name for x in PATTERNS]
         self.assertListEqual(types, pattern_types)
@@ -93,7 +112,8 @@ class TestLexer(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.script_using_all_tokens: str = (
-            'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= ° '
+            'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= = ° '
+            + " ".join(DECL_KEYWORDS)
             + " ".join(LITERAL_KEYWORDS)
         )
         cls._assert_script_uses_all_available_types(cls.script_using_all_tokens)
@@ -213,6 +233,63 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
+    def test_token_keyword(self) -> None:
+        tokens: list[Token] = lex_script("var const")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DECLKEYWORD, "var"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.DECLKEYWORD, "const"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_literal_keyword(self) -> None:
+        tokens: list[Token] = lex_script("true false")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.LITKEYWORD, "true"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.LITKEYWORD, "false"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_identifier_overlapping_keyword(self) -> None:
+        # Overlaps "var".
+        tokens: list[Token] = lex_script("variable")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.IDENTIFIER, "variable"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_identifier_overlapping_literal_keyword(self) -> None:
+        # Overlaps "true".
+        tokens: list[Token] = lex_script("truevalue")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.IDENTIFIER, "truevalue"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_identifier_overlapping_keywords(self) -> None:
+        # Overlaps "true" and "var".
+        tokens: list[Token] = lex_script("true0var")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.IDENTIFIER, "true0var"),
+                Token(TokenType.EOF),
+            ],
+        )
+
     def test_token_number(self) -> None:
         tokens: list[Token] = lex_script("123 123.456")
         self.assertListEqual(
@@ -261,6 +338,31 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.GTE, ">="),
                 Token(TokenType.LT, "<"),
                 Token(TokenType.LTE, "<="),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_bang(self) -> None:
+        tokens: list[Token] = lex_script("!!=!")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.BANG, "!"),
+                Token(TokenType.BANGEQUAL, "!="),
+                Token(TokenType.BANG, "!"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_equal(self) -> None:
+        tokens: list[Token] = lex_script("===!==")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DBLEQUAL, "=="),
+                Token(TokenType.EQUAL, "="),
+                Token(TokenType.BANGEQUAL, "!="),
+                Token(TokenType.EQUAL, "="),
                 Token(TokenType.EOF),
             ],
         )

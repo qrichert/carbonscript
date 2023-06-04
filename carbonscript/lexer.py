@@ -3,6 +3,7 @@ import re
 
 
 class TokenType(enum.Enum):
+    DECLKEYWORD = "DECLKEYWORD"  # var, const
     LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
     STRING = "STRING"  # hello, world
     IDENTIFIER = "IDENTIFIER"  # some_variable
@@ -21,6 +22,7 @@ class TokenType(enum.Enum):
     LTE = "LTE"  # <=
     LT = "LT"  # <
     BANG = "BANG"  # !
+    EQUAL = "EQUAL"  # =
     LPAREN = "LPAREN"  # (
     RPAREN = "RPAREN"  # )
     DBLQUOTE = "DBLQUOTE"  # "
@@ -31,6 +33,11 @@ class TokenType(enum.Enum):
     GARBAGE = "GARBAGE"  # Shouldn't be used, will be garbage collected.
 
 
+DECL_KEYWORDS: set[str] = {
+    "var",
+    "const",
+}
+
 LITERAL_KEYWORDS: set[str] = {
     "true",
     "false",
@@ -38,7 +45,6 @@ LITERAL_KEYWORDS: set[str] = {
 }
 
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [
-    (re.compile(f"({'|'.join(LITERAL_KEYWORDS)})"), TokenType.LITKEYWORD),
     (re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"), TokenType.IDENTIFIER),
     (re.compile(r"\d+(\.\d+)?"), TokenType.NUMBER),
     (re.compile(r"\*\*"), TokenType.DBLSTAR),
@@ -55,6 +61,7 @@ PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r"<="), TokenType.LTE),
     (re.compile(r"<"), TokenType.LT),
     (re.compile(r"!"), TokenType.BANG),
+    (re.compile(r"="), TokenType.EQUAL),
     (re.compile(r"\("), TokenType.LPAREN),
     (re.compile(r"\)"), TokenType.RPAREN),
     (re.compile(r'"'), TokenType.DBLQUOTE),
@@ -133,12 +140,35 @@ class Lexer:
         for pattern, token_type in PATTERNS:
             if match_ := pattern.match(text_view):
                 value: str = match_.group(0)
+                if token_type == TokenType.IDENTIFIER:
+                    token_type = self._update_token_type_if_identifier_is_keyword(value)
                 token: Token = self._consume_match(token_type, value)
                 if token_type == TokenType.NEWLINE:
                     self._track_next_line()
                 return token
         value: str = text_view[0]
         return self._consume_match(TokenType.UNKNOWN, value)
+
+    @staticmethod
+    def _update_token_type_if_identifier_is_keyword(value: str) -> TokenType:
+        """Disambiguate between identifier and keyword.
+
+        If we handle identifiers and keywords separately, a variable
+        named "true_or_not" may be matched as:
+
+            [Token(LITKEYWORD, 'true'), Token(IDENTIFIER, '_or_not')]
+
+        This is an error, and the reason why we match everything as an
+        identifier, and treat keywords as special case of identifiers.
+
+        Everything is an identifier, unless it happens to be a keyword.
+        This works because keywords match the identifier pattern regex.
+        """
+        if value in DECL_KEYWORDS:
+            return TokenType.DECLKEYWORD
+        if value in LITERAL_KEYWORDS:
+            return TokenType.LITKEYWORD
+        return TokenType.IDENTIFIER
 
     def _consume_match(self, token_type: TokenType, value: str) -> Token:
         """Extract token from script and advance playhead."""

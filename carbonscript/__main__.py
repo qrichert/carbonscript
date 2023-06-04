@@ -39,6 +39,10 @@ class CarbonScriptREPL(cmd.Cmd):
     ruler = ""
     nohelp = color_error("No help on %r.")
 
+    def __init__(self, *args, **kwargs) -> None:
+        self.interpreter: Interpreter = Interpreter()
+        super().__init__(*args, **kwargs)
+
     def cmdloop(self, *args, **kwargs) -> None:
         """Interrupt REPL gracefully."""
         try:
@@ -98,11 +102,10 @@ class CarbonScriptREPL(cmd.Cmd):
             print(color_error(str(e)))
         return None
 
-    @staticmethod
-    def _interpret_script(script: str) -> LiteralValue:
+    def _interpret_script(self, script: str) -> LiteralValue:
         tokens: list[Token] = Lexer().lex(script)
         statements: list[Stmt] = Parser().parse(tokens)
-        return Interpreter().interpret_one(statements[0])
+        return self.interpreter.interpret_one(statements[0])
 
 
 def main() -> None:

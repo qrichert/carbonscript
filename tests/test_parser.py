@@ -7,7 +7,9 @@ from decimal import Decimal as D
 import carbonscript.parser
 from carbonscript.lexer import Lexer, Token, TokenType
 from carbonscript.parser import (
+    Assign,
     BinOp,
+    ConstDecl,
     Expr,
     ExprStmt,
     Group,
@@ -16,6 +18,7 @@ from carbonscript.parser import (
     Parser,
     Stmt,
     Unary,
+    VarDecl,
 )
 
 
@@ -91,6 +94,57 @@ class TestExpr(unittest.TestCase):
         expr = Group(Literal(TokenType.NUMBER, "42"))
         self.assertEqual(str(expr), repr(expr))
 
+    def test_repr_declare_var(self) -> None:
+        expr = VarDecl(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "VarDecl(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
+        )
+
+    def test_str_declare_var(self) -> None:
+        expr = VarDecl(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_declare_const(self) -> None:
+        expr = ConstDecl(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "ConstDecl(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
+        )
+
+    def test_str_declare_const(self) -> None:
+        expr = ConstDecl(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_assign(self) -> None:
+        expr = Assign(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "Assign(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
+        )
+
+    def test_str_assign(self) -> None:
+        expr = Assign(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
 
 class TestParser(unittest.TestCase):
     def test_no_side_effects_on_input(self) -> None:
@@ -103,6 +157,14 @@ class TestParser(unittest.TestCase):
         parser = Parser()
         parser.parse(tokens)
         self.assertIs(tokens, parser.tokens)
+
+
+class TestStatements(unittest.TestCase):
+    def test_empty(self) -> None:
+        self.assertListEqual(
+            parse_script(""),
+            [],
+        )
 
     def test_multiple_statements(self) -> None:
         self.assertListEqual(
@@ -145,33 +207,78 @@ class TestParser(unittest.TestCase):
             ],
         )
 
-
-class TestParserBasicExpressions(unittest.TestCase):
-    def test_empty(self) -> None:
+    def test_declaration_var(self) -> None:
         self.assertListEqual(
-            parse_script(""),
-            [],
+            parse_script("var a = 12 * 9"),
+            [
+                VarDecl(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("12")),
+                        TokenType.STAR,
+                        Literal(TokenType.NUMBER, D("9")),
+                    ),
+                )
+            ],
         )
 
-    def test_with_whitespace(self) -> None:
-        self.assertEqual(
-            parse_expression("3   *   6   *   9 "),
-            BinOp(
-                BinOp(
-                    Literal(TokenType.NUMBER, D("3")),
-                    TokenType.STAR,
-                    Literal(TokenType.NUMBER, D("6")),
-                ),
-                TokenType.STAR,
-                Literal(TokenType.NUMBER, D("9")),
-            ),
-        )
-
-    def test_invalid_operator(self) -> None:
+    def test_declaration_var_without_value(self) -> None:
         with self.assertRaises(ParseError) as ctx:
-            parse_expression("1°3")
-        self.assertEqual(ctx.exception.token, Token(TokenType.UNKNOWN, "°"))
+            parse_script("var foo"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.EOF))
 
+    def test_declaration_var_assigning_to_constant(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("var 2 = 3"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.NUMBER, "2"))
+
+    def test_declaration_var_assigning_to_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("var a + b = c"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.PLUS, "+"))
+
+    def test_declaration_const(self) -> None:
+        self.assertListEqual(
+            parse_script("const a = 12 * 9"),
+            [
+                ConstDecl(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("12")),
+                        TokenType.STAR,
+                        Literal(TokenType.NUMBER, D("9")),
+                    ),
+                )
+            ],
+        )
+
+    def test_declaration_const_without_value(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("const foo"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.EOF))
+
+    def test_declaration_const_assigning_to_constant(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("const 2 = 3"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.NUMBER, "2"))
+
+    def test_declaration_const_assigning_to_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("const a + b = c"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.PLUS, "+"))
+
+    def test_declaration_multiple_declarations_on_single_line(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("const a = 2+2 var b = 3+3")
+            self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
+
+    def test_declaration_assigning_multiple_expressions(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("const a = 2+2 (3+3)")
+            self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
+
+
+class TestLiterals(unittest.TestCase):
     def test_number_integer(self) -> None:
         self.assertEqual(
             parse_expression("3"),
@@ -221,6 +328,72 @@ class TestParserBasicExpressions(unittest.TestCase):
             parse_expression("null"),
             Literal(TokenType.LITKEYWORD, None),
         )
+
+
+class TestExpressions(unittest.TestCase):
+    def test_with_whitespace(self) -> None:
+        self.assertEqual(
+            parse_expression("3   *   6   *   9 "),
+            BinOp(
+                BinOp(
+                    Literal(TokenType.NUMBER, D("3")),
+                    TokenType.STAR,
+                    Literal(TokenType.NUMBER, D("6")),
+                ),
+                TokenType.STAR,
+                Literal(TokenType.NUMBER, D("9")),
+            ),
+        )
+
+    def test_invalid_operator(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1°3")
+        self.assertEqual(ctx.exception.token, Token(TokenType.UNKNOWN, "°"))
+
+    def test_assignment(self) -> None:
+        self.assertEqual(
+            parse_expression("a=12*9"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "a"),
+                BinOp(
+                    Literal(TokenType.NUMBER, D("12")),
+                    TokenType.STAR,
+                    Literal(TokenType.NUMBER, D("9")),
+                ),
+            ),
+        )
+
+    def test_assignment_chained(self) -> None:
+        self.assertEqual(
+            parse_expression("a=b=3"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "a"),
+                Assign(
+                    Literal(TokenType.IDENTIFIER, "b"),
+                    Literal(TokenType.NUMBER, D("3")),
+                ),
+            ),
+        )
+
+    def test_assignment_assigning_to_constant(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("2=3"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.EQUAL, "="))
+
+    def test_assignment_assigning_to_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("a+b=c"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.EQUAL, "="))
+
+    def test_assignment_multiple_assignments_on_single_line(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("a = 2+2 b = 3+3")
+        self.assertEqual(ctx.exception.token, Token(TokenType.IDENTIFIER, "b"))
+
+    def test_assignment_assigning_multiple_expressions(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("a = 2+2 (3+3)")
+        self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
 
     def test_equality_equal(self) -> None:
         self.assertEqual(

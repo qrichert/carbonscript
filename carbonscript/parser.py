@@ -54,9 +54,11 @@ class Unary(Expr):
         return f"{class_name}({operator}, {self.rexpr!r})"
 
 
+# TODO[refactor]: Literals should have their own class.
+#   Number, String, Boolean, Null, Identifier
 @dataclass
 class Literal(Expr):
-    """Number, string, boolean, null. (e.g., `108`)."""
+    """Number, String, boolean, null, identifier. (e.g., `108`)."""
 
     literal: TokenType
     value: Union[Decimal, str, bool, None]
@@ -78,6 +80,18 @@ class Group(Expr):
         return f"{class_name}({self.expr!r})"
 
 
+@dataclass
+class Assign(Expr):
+    """Identifier and expression to assign to identifier."""
+
+    lidentifier: Literal
+    rexpr: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({self.lidentifier}, {self.rexpr!r})"
+
+
 @dataclass(repr=False)
 class Stmt:
     """Statement."""
@@ -91,6 +105,31 @@ class ExprStmt(Stmt):
 
     def __repr__(self) -> str:
         return f"ExprStmt({self.expression})"
+
+
+@dataclass(repr=False)
+class Declaration(Stmt):
+    """Declaration."""
+
+
+@dataclass
+class VarDecl(Declaration):
+    """Variable declaration."""
+
+    lidentifier: Literal
+    rexpr: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({self.lidentifier}, {self.rexpr!r})"
+
+
+@dataclass()
+class ConstDecl(VarDecl):
+    """Constant declaration"""
+
+    def __repr__(self) -> str:
+        return super().__repr__()
 
 
 class Parser:
@@ -107,7 +146,7 @@ class Parser:
     def parse(self, tokens: list[Token]) -> list[Stmt]:
         """Parse program.
 
-        program → stmt* EOF
+        program → declaration* EOF
         """
         self.__init__()
         self.tokens = tokens
@@ -115,9 +154,48 @@ class Parser:
             self._discard_empty_lines()
             if self._current().type == TokenType.EOF:
                 break
-            stmt: Stmt = self._parse_stmt()
+            stmt: Stmt = self._parse_declaration()
             self.statements.append(stmt)
         return self.statements
+
+    def _parse_declaration(self) -> Declaration | Stmt:
+        """Parse declaration.
+
+        declaration → var_decl
+                    | stmt
+        """
+        if self._consume_token_if_matches(TokenType.DECLKEYWORD):
+            match self._previous().value:
+                case "var":
+                    return self._var_decl()
+                case "const":
+                    return self._var_decl(const=True)
+            assert False, "Unmatched declaration keyword."
+        return self._parse_stmt()
+
+    def _var_decl(self, const: bool = False) -> VarDecl | ConstDecl:
+        """Parse variable declaration.
+
+        var_decl → ("var" | "const") IDENTIFIER "=" expr "\n"
+        """
+        if self._consume_token_if_matches(TokenType.IDENTIFIER):
+            lidentifier: Literal = Literal(TokenType.IDENTIFIER, self._previous().value)
+            if self._consume_token_if_matches(TokenType.EQUAL):
+                rexpr: Expr = self._parse_expr()
+                self._match_end_of_statement()
+                if const:
+                    return ConstDecl(lidentifier, rexpr)
+                return VarDecl(lidentifier, rexpr)
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected '=' sign after identifier",
+                self._current(),
+            )
+        raise ParseError(
+            ErrorType.SYNTAX,
+            "assignment target is not an identifier",
+            self._current(),
+        )
 
     def _parse_stmt(self) -> Stmt:
         """Parse statement.
@@ -132,27 +210,60 @@ class Parser:
         expr_stmt → expr "\n"
         """
         expr: Expr = self._parse_expr()
+        self._match_end_of_statement()
+        return ExprStmt(expr)
+
+    def _match_end_of_statement(self) -> None:
         if (
             not self._consume_token_if_matches(TokenType.NEWLINE)
             and self._current().type != TokenType.EOF
         ):
             raise ParseError(
                 ErrorType.SYNTAX,
-                "multiple expressions on a single line",
+                "multiple statements on a single line",
                 self._current(),
             )
-        return ExprStmt(expr)
 
     def _discard_empty_lines(self) -> None:
-        while self._current().type == TokenType.NEWLINE:
+        def is_empty_line() -> bool:
+            return self._current().type == TokenType.NEWLINE
+
+        def is_whitespace_only_line() -> bool:
+            return self._current().type == TokenType.WHITESPACE and (
+                self._peek().type in (TokenType.NEWLINE, TokenType.EOF)
+            )
+
+        while is_empty_line() or is_whitespace_only_line():
             self._consume()
 
     def _parse_expr(self) -> Expr:
         """Parse expression.
 
-        expr → equality
+        expr → assignment
         """
-        return self._parse_equality()
+        return self._parse_assignment()
+
+    def _parse_assignment(self) -> Expr:
+        """Parse assignment.
+
+        assignment → IDENTIFIER "=" assignment
+                   | equality
+        """
+        expr: Expr = self._parse_equality()
+
+        # "expr" is the lvalue of an assignment, if followed by "=".
+        if self._consume_token_if_matches(TokenType.EQUAL):
+            if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "assignment target is not an identifier",
+                    self._previous(),  # "=" sign.
+                )
+            lidentifier: Literal = expr
+            rexpr: Expr = self._parse_assignment()
+            return Assign(lidentifier, rexpr)
+
+        return expr
 
     def _parse_equality(self) -> Expr:
         """Parse equality.
@@ -289,18 +400,23 @@ class Parser:
 
         primary → NUMBER | STRING | BOOLEAN | NULL
                 | "(" expr ")"
+                | IDENTIFIER
         """
+        # TODO[refactor]: These should be functions, each.
         literal: TokenType
-        if literal := self._consume_token_if_matches(TokenType.NUMBER):
+        if self._consume_token_if_matches(TokenType.NUMBER):
             value: Decimal = Decimal(self._previous().value)
-            return Literal(literal, value)
-        if literal := self._consume_token_if_matches(TokenType.STRING):
+            return Literal(TokenType.NUMBER, value)
+        if self._consume_token_if_matches(TokenType.STRING):
             string_token_type: TokenType = self._previous(2).type
             if string_token_type == TokenType.STRING:
                 value: str = self._previous(2).value
-                return Literal(literal, value)
+                return Literal(TokenType.STRING, value)
             if string_token_type == TokenType.DBLQUOTE:  # empty string
-                return Literal(literal, "")
+                return Literal(TokenType.STRING, "")
+        if self._consume_token_if_matches(TokenType.IDENTIFIER):
+            value: str = self._previous().value
+            return Literal(TokenType.IDENTIFIER, value)
         if literal := self._consume_token_if_matches(TokenType.LITKEYWORD):
             match self._previous().value:
                 case "true":
@@ -309,11 +425,7 @@ class Parser:
                     return Literal(literal, False)
                 case "null":
                     return Literal(literal, None)
-            raise ParseError(
-                ErrorType.SYNTAX,
-                f"invalid keyword {self._previous().value!r}",
-                self._current(),
-            )
+            assert False, "Unmatched literal keyword."
         if self._consume_token_if_matches(TokenType.LPAREN):
             expr: Expr = self._parse_expr()
             rparen: TokenType = self._consume_token_if_matches(TokenType.RPAREN)
