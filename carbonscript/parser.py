@@ -418,12 +418,15 @@ class Parser:
             value: Decimal = Decimal(self._previous().value)
             return Literal(TokenType.NUMBER, value)
         if self._consume_token_if_matches(TokenType.STRING):
-            string_token_type: TokenType = self._previous(2).type
-            if string_token_type == TokenType.STRING:
-                value: str = self._previous(2).value
-                return Literal(TokenType.STRING, value)
-            if string_token_type == TokenType.DBLQUOTE:  # empty string
-                return Literal(TokenType.STRING, "")
+            value: str = self._previous().value
+            if len(value) < 2 or not value.endswith('"'):
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "unterminated string",
+                    self._previous(),
+                )
+            value = value[1:-1]
+            return Literal(TokenType.STRING, value)
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
             value: str = self._previous().value
             return Literal(TokenType.IDENTIFIER, value)
@@ -458,44 +461,22 @@ class Parser:
             if token_type == self._current().type:
                 self._consume()
                 return token_type
-            if (
-                token_type == TokenType.STRING
-                and self._current().type == TokenType.DBLQUOTE
-            ):
-                if (
-                    self._peek(1).type == TokenType.STRING
-                    and self._peek(2).type == TokenType.DBLQUOTE
-                ):
-                    self._consume(3)
-                    return TokenType.STRING
-                if self._peek().type == TokenType.DBLQUOTE:  # empty string
-                    self._consume(2)
-                    return TokenType.STRING
-                raise ParseError(
-                    ErrorType.SYNTAX,
-                    "unterminated string",
-                    self._peek(),
-                )
         return None
 
     def _discard_garbage_tokens(self) -> None:
         while self._current().type in GARBAGE_TOKENS:
             self._consume()
 
-    def _consume(self, nb_tokens: int = 1) -> None:
-        self._pos += nb_tokens
+    def _consume(self) -> None:
+        self._pos += 1
 
     def _current(self) -> Token:
         return self.tokens[self._pos]
 
-    def _peek(self, nb_tokens: int = 1) -> Token | None:
+    def _previous(
+        self,
+    ) -> Token | None:
         try:
-            return self.tokens[self._pos + nb_tokens]
-        except IndexError:
-            return None
-
-    def _previous(self, nb_tokens: int = 1) -> Token | None:
-        try:
-            return self.tokens[self._pos - nb_tokens]
+            return self.tokens[self._pos - 1]
         except IndexError:
             return None

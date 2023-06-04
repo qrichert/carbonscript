@@ -43,7 +43,6 @@ class TestPatterns(unittest.TestCase):
 
         Exceptions:
         *KEYWORD: Keywords are a special case of IDENTIFIER.
-        STRING: Whether a char is part of a string is based on context.
         UNKNOWN: Represents a token with no matching type.
         GARBAGE: Specific to the implementation of the lexer.
         """
@@ -54,7 +53,6 @@ class TestPatterns(unittest.TestCase):
             not in (
                 TokenType.DECLKEYWORD,
                 TokenType.LITKEYWORD,
-                TokenType.STRING,
                 TokenType.UNKNOWN,
                 TokenType.GARBAGE,
             )
@@ -189,13 +187,9 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "hello, world\n"),
-                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, '"hello, world\n"'),
                 Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "second string"),
-                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, '"second string"'),
                 Token(TokenType.EOF),
             ],
         )
@@ -205,8 +199,7 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, '""'),
                 Token(TokenType.EOF),
             ],
         )
@@ -216,8 +209,7 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "abc_123"),
+                Token(TokenType.STRING, '"abc_123'),
                 Token(TokenType.EOF),
             ],
         )
@@ -227,9 +219,7 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "abc ## 123 ## 456 ## def"),
-                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, '"abc ## 123 ## 456 ## def"'),
                 Token(TokenType.EOF),
             ],
         )
@@ -239,9 +229,7 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "abc # 123 # def"),
-                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, '"abc # 123 # def"'),
                 Token(TokenType.EOF),
             ],
         )

@@ -5,11 +5,9 @@ import re
 class TokenType(enum.Enum):
     DECLKEYWORD = "DECLKEYWORD"  # var, const
     LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
-    # TODO[refactor]: Include quotes in string, and discard later in
-    #  parser. This makes everything simpler, like multiline comments.
-    STRING = "STRING"  # hello, world
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
+    STRING = "STRING"  # "hello, world"
     DBLSTAR = "DBLSTAR"  # **
     STAR = "STAR"  # *
     DBLSLASH = "DBLSLASH"  # //
@@ -27,7 +25,6 @@ class TokenType(enum.Enum):
     EQUAL = "EQUAL"  # =
     LPAREN = "LPAREN"  # (
     RPAREN = "RPAREN"  # )
-    DBLQUOTE = "DBLQUOTE"  # "
     NEWLINE = "NEWLINE"  # \n
     WHITESPACE = "WHITESPACE"  # <space>, \t, etc. (but not \n)
     MLCOMMENT = "MLCOMMENT"  # ## Multi line comment ##
@@ -51,6 +48,7 @@ LITERAL_KEYWORDS: set[str] = {
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*"), TokenType.IDENTIFIER),
     (re.compile(r"\d+(\.\d+)?"), TokenType.NUMBER),
+    (re.compile(r'"'), TokenType.STRING),
     (re.compile(r"\*\*"), TokenType.DBLSTAR),
     (re.compile(r"\*"), TokenType.STAR),
     (re.compile(r"//"), TokenType.DBLSLASH),
@@ -68,7 +66,6 @@ PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r"="), TokenType.EQUAL),
     (re.compile(r"\("), TokenType.LPAREN),
     (re.compile(r"\)"), TokenType.RPAREN),
-    (re.compile(r'"'), TokenType.DBLQUOTE),
     (re.compile(r"\n"), TokenType.NEWLINE),
     (re.compile(r"[ \t]+"), TokenType.WHITESPACE),
     (re.compile(r"##"), TokenType.MLCOMMENT),
@@ -191,7 +188,7 @@ class Lexer:
             self._context = Context.NONE
             return
 
-        if token_type == TokenType.DBLQUOTE:
+        if token_type == TokenType.STRING:
             if self._context == Context.NONE:
                 self._context = Context.STRING
             elif self._context == Context.STRING:
@@ -217,25 +214,27 @@ class Lexer:
     def _handle_context_specific_token_types(
         self, token_type: TokenType, value: str
     ) -> TokenType:
-        if self._context == Context.STRING and token_type != TokenType.DBLQUOTE:
-            # Append to existing string.
-            if self._last_token.type == TokenType.STRING:
-                self._last_token.value += value
-                return TokenType.GARBAGE
-            # New string.
-            return TokenType.STRING
+        if self._context == Context.STRING or (
+            # Exiting STRING.
+            token_type == TokenType.STRING
+            and self._context == Context.NONE
+            and self._last_token.type == token_type.STRING
+        ):
+            return self._append_to_existing_or_create(TokenType.STRING, value)
         if self._context == Context.MLCOMMENT or (
             # Exiting MLCOMMENT.
             token_type == TokenType.MLCOMMENT
             and self._context == Context.NONE
             and self._last_token.type == token_type.MLCOMMENT
         ):
-            return self._append_to_last_or_create(TokenType.MLCOMMENT, value)
+            return self._append_to_existing_or_create(TokenType.MLCOMMENT, value)
         if self._context == Context.SLCOMMENT:
-            return self._append_to_last_or_create(TokenType.SLCOMMENT, value)
+            return self._append_to_existing_or_create(TokenType.SLCOMMENT, value)
         return token_type
 
-    def _append_to_last_or_create(self, token_type: TokenType, value: str) -> TokenType:
+    def _append_to_existing_or_create(
+        self, token_type: TokenType, value: str
+    ) -> TokenType:
         if self._last_token.type == token_type:
             self._last_token.value += value
             return TokenType.GARBAGE

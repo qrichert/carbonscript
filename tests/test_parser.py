@@ -360,12 +360,12 @@ class TestStatements(unittest.TestCase):
     def test_declaration_multiple_declarations_on_single_line(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("const a = 2+2 var b = 3+3")
-            self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
 
     def test_declaration_assigning_multiple_expressions(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("const a = 2+2 (3+3)")
-            self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
+        self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
 
 
 class TestLiterals(unittest.TestCase):
@@ -394,12 +394,21 @@ class TestLiterals(unittest.TestCase):
         )
 
     def test_string_unterminated(self) -> None:
-        with self.assertRaises(ParseError):
+        with self.assertRaises(ParseError) as ctx:
             parse_expression('"foo')
+        self.assertEqual(ctx.exception.token, Token(TokenType.STRING, '"foo'))
 
     def test_string_unterminated_empty(self) -> None:
-        with self.assertRaises(ParseError):
+        with self.assertRaises(ParseError) as ctx:
             parse_expression('"')
+        self.assertEqual(ctx.exception.token, Token(TokenType.STRING, '"'))
+
+    # TODO: Allow escape sequence
+    # def test_string_double_quote_escaped(self) -> None:
+    #     self.assertEqual(
+    #         parse_expression(r'"\"foo\""'),
+    #         Literal(TokenType.STRING, '"foo"'),
+    #     )
 
     def test_literal_keyword_true(self) -> None:
         self.assertEqual(
