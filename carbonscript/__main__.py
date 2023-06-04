@@ -1,6 +1,7 @@
 import argparse
 import cmd
 import os
+import sys
 from pathlib import Path
 
 from .interpreter import Interpreter, LiteralValue
@@ -97,18 +98,45 @@ class CarbonScriptREPL(cmd.Cmd):
         if line == "exit()":
             return True
         try:
-            print(self._interpret_script(line))
-        except ParseError as e:
+            # TODO: here too with "None" being incorrect
+            res: LiteralValue | None = self._interpret_as_expression(line)
+            if res is not None:
+                print(res)
+        except KeyboardInterrupt:
+            raise
+        except (ParseError, Exception) as e:
+            # TODO: Handle exception nicely.
             print(color_error(str(e)))
         return None
 
-    def _interpret_script(self, script: str) -> LiteralValue:
-        tokens: list[Token] = Lexer().lex(script)
+    def _interpret_as_expression(self, line: str) -> LiteralValue | None:
+        tokens: list[Token] = Lexer().lex(line)
         statements: list[Stmt] = Parser().parse(tokens)
         return self.interpreter.interpret_one(statements[0])
 
 
-def main() -> None:
+def execute_file(file: Path) -> int:
+    with open(file, "r") as f:
+        script: str = f.read()
+    try:
+        tokens: list[Token] = Lexer().lex(script)
+        statements: list[Stmt] = Parser().parse(tokens)
+        Interpreter().interpret(statements)
+    except KeyboardInterrupt:
+        return 1
+    except (ParseError, Exception) as e:
+        # TODO: Handle exception nicely.
+        print(color_error(str(e)))
+        return 1
+    return 0
+
+
+def main(argc: int, argv: list[str]) -> int:
+    if argc >= 2:
+        first_arg: Path = Path(argv[1])
+        if first_arg.is_file():
+            return execute_file(first_arg)
+
     args: argparse.Namespace = parse_args()
 
     repl: CarbonScriptREPL = CarbonScriptREPL()
@@ -117,6 +145,8 @@ def main() -> None:
         return
     repl.cmdloop()
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(len(sys.argv), sys.argv))

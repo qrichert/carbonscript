@@ -25,6 +25,10 @@ class Scope:
         self._values: dict[str, tuple[LiteralValue, bool]] = {}
         self.parent: Scope | None = parent
 
+    def to_dict(self) -> dict:
+        values: dict = {}
+        return self._values
+
     def _has_value(self, identifier: str) -> bool:
         return identifier in self._values
 
@@ -106,7 +110,7 @@ class Interpreter:
 
         stmt: Stmt
         for stmt in statements:
-            self.interpret_one(stmt)
+            self._interpret_declaration(stmt)
 
     # TODO: Differentiate between None (null) (legitimate value)
     #  and "no value" (e.g., var i = 12  # not an expression, no value).
@@ -114,6 +118,9 @@ class Interpreter:
     #     differentiate -> is LiteralValue ? yes or no
     #     since LiteralValue(None) is still truthy.
     def interpret_one(self, stmt: Stmt) -> LiteralValue | None:
+        return self._interpret_declaration(stmt)
+
+    def _interpret_declaration(self, stmt: Stmt) -> LiteralValue | None:
         if isinstance(stmt, ExprStmt):
             return self._interpret_expr_stmt(stmt)
         if isinstance(stmt, VarDecl):

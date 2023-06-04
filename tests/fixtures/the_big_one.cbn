@@ -1,0 +1,39 @@
+const assignment = true
+
+const equal = 1 == 1
+const not_equal = 1 != 2
+
+const comp_gt = 3 > 2
+const comp_gte = 3 >= 3
+const comp_lt = 2 < 3
+const comp_lte = 2 <= 2
+
+const add = 3 + 4
+const subtract = 3 - 4
+
+const multiply = 3 * 4
+const divide = 3 / 4
+const int_divide = 4 // 3
+const modulo = 4 % 4
+
+const power = 2 ** 4
+
+const unary_plus = +7
+const unary_minus = -7
+const unary_bang = !true
+
+const number_int = 36
+const number_float = 1.618
+const string = "hello, world\n"
+const boolean_true = true
+const boolean_false = false
+const null_value = null
+const parenthesis = 3 * (4 + 1)
+const identifier = power
+
+var variable = "initial value"
+variable = "redefined value"
+
+var chained_1 = null
+var chained_2 = null
+const chained_assign = chained_1 = chained_2 = 9
