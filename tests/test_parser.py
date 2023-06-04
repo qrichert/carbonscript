@@ -31,9 +31,11 @@ def load_tests(
     return tests
 
 
-def parse_expression(expression: str) -> Expr:
+def parse_expression(expression: str) -> Expr | None:
     tokens: list[Token] = Lexer().lex(expression)
     statements: list[Stmt] = Parser().parse(tokens)
+    if not statements:
+        return None
     return statements[0].expression
 
 
@@ -157,6 +159,94 @@ class TestParser(unittest.TestCase):
         parser = Parser()
         parser.parse(tokens)
         self.assertIs(tokens, parser.tokens)
+
+    def test_ml_comment(self) -> None:
+        self.assertEqual(
+            parse_expression("## foo \n bar ##"),
+            None,
+        )
+
+    def test_ml_comment_with_newline_after(self) -> None:
+        self.assertEqual(
+            parse_expression("## foo \n bar ##\n"),
+            None,
+        )
+
+    def test_ml_comment_with_whitespace_before(self) -> None:
+        self.assertEqual(
+            parse_expression("  ## foo \n bar ##"),
+            None,
+        )
+
+    def test_ml_comment_with_block_before(self) -> None:
+        self.assertEqual(
+            parse_expression("    ## foo \n bar ##"),
+            None,
+        )
+
+    def test_ml_comment_before_expression(self) -> None:
+        self.assertEqual(
+            parse_expression("## foo ## 2+12"),
+            BinOp(
+                Literal(TokenType.NUMBER, D("2")),
+                TokenType.PLUS,
+                Literal(TokenType.NUMBER, D("12")),
+            ),
+        )
+
+    def test_ml_comment_inside_expression(self) -> None:
+        self.assertEqual(
+            parse_expression("2+ ## foo ## 12"),
+            BinOp(
+                Literal(TokenType.NUMBER, D("2")),
+                TokenType.PLUS,
+                Literal(TokenType.NUMBER, D("12")),
+            ),
+        )
+
+    def test_ml_comment_after_expression(self) -> None:
+        self.assertEqual(
+            parse_expression("2+12 ## foo ##"),
+            BinOp(
+                Literal(TokenType.NUMBER, D("2")),
+                TokenType.PLUS,
+                Literal(TokenType.NUMBER, D("12")),
+            ),
+        )
+
+    def test_sl_comment(self) -> None:
+        self.assertEqual(
+            parse_expression("## foo"),
+            None,
+        )
+
+    def test_sl_comment_with_newline_after(self) -> None:
+        self.assertEqual(
+            parse_expression("## foo\n"),
+            None,
+        )
+
+    def test_sl_comment_with_whitespace_before(self) -> None:
+        self.assertEqual(
+            parse_expression("  # foo"),
+            None,
+        )
+
+    def test_sl_comment_with_block_before(self) -> None:
+        self.assertEqual(
+            parse_expression("    # foo"),
+            None,
+        )
+
+    def test_sl_comment_after_expression(self) -> None:
+        self.assertEqual(
+            parse_expression("2+12 # foo"),
+            BinOp(
+                Literal(TokenType.NUMBER, D("2")),
+                TokenType.PLUS,
+                Literal(TokenType.NUMBER, D("12")),
+            ),
+        )
 
 
 class TestStatements(unittest.TestCase):

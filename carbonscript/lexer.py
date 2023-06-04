@@ -5,6 +5,8 @@ import re
 class TokenType(enum.Enum):
     DECLKEYWORD = "DECLKEYWORD"  # var, const
     LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
+    # TODO[refactor]: Include quotes in string, and discard later in
+    #  parser. This makes everything simpler, like multiline comments.
     STRING = "STRING"  # hello, world
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
@@ -28,6 +30,8 @@ class TokenType(enum.Enum):
     DBLQUOTE = "DBLQUOTE"  # "
     NEWLINE = "NEWLINE"  # \n
     WHITESPACE = "WHITESPACE"  # <space>, \t, etc. (but not \n)
+    MLCOMMENT = "MLCOMMENT"  # ## Multi line comment ##
+    SLCOMMENT = "SLCOMMENT"  # # Single line comment
     EOF = "EOF"  # End of file marker.
     UNKNOWN = "UNKNOWN"  # Matches no known type.
     GARBAGE = "GARBAGE"  # Shouldn't be used, will be garbage collected.
@@ -67,6 +71,8 @@ PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r'"'), TokenType.DBLQUOTE),
     (re.compile(r"\n"), TokenType.NEWLINE),
     (re.compile(r"[ \t]+"), TokenType.WHITESPACE),
+    (re.compile(r"##"), TokenType.MLCOMMENT),
+    (re.compile(r"#"), TokenType.SLCOMMENT),
     (re.compile(r"$"), TokenType.EOF),
 ]
 
@@ -102,6 +108,8 @@ class Token:
 class Context(enum.Enum):
     NONE = "NONE"
     STRING = "STRING"
+    MLCOMMENT = "MLCOMMENT"
+    SLCOMMENT = "SLCOMMENT"
 
 
 class Lexer:
@@ -181,11 +189,30 @@ class Lexer:
     def _update_context(self, token_type: TokenType) -> None:
         if token_type == TokenType.EOF:
             self._context = Context.NONE
-        elif token_type == TokenType.DBLQUOTE:
+            return
+
+        if token_type == TokenType.DBLQUOTE:
             if self._context == Context.NONE:
                 self._context = Context.STRING
-            else:
+            elif self._context == Context.STRING:
                 self._context = Context.NONE
+            return
+
+        if token_type == TokenType.MLCOMMENT:
+            if self._context == Context.NONE:
+                self._context = Context.MLCOMMENT
+            elif self._context == Context.MLCOMMENT:
+                self._context = Context.NONE
+            return
+
+        if token_type == TokenType.SLCOMMENT:
+            if self._context == Context.NONE:
+                self._context = Context.SLCOMMENT
+            return
+        if self._context == Context.SLCOMMENT:
+            if token_type == TokenType.NEWLINE:
+                self._context = Context.NONE
+            return
 
     def _handle_context_specific_token_types(
         self, token_type: TokenType, value: str
@@ -197,6 +224,21 @@ class Lexer:
                 return TokenType.GARBAGE
             # New string.
             return TokenType.STRING
+        if self._context == Context.MLCOMMENT or (
+            # Exiting MLCOMMENT.
+            token_type == TokenType.MLCOMMENT
+            and self._context == Context.NONE
+            and self._last_token.type == token_type.MLCOMMENT
+        ):
+            return self._append_to_last_or_create(TokenType.MLCOMMENT, value)
+        if self._context == Context.SLCOMMENT:
+            return self._append_to_last_or_create(TokenType.SLCOMMENT, value)
+        return token_type
+
+    def _append_to_last_or_create(self, token_type: TokenType, value: str) -> TokenType:
+        if self._last_token.type == token_type:
+            self._last_token.value += value
+            return TokenType.GARBAGE
         return token_type
 
     def _create_token(self, token_type: TokenType, value: str) -> Token:

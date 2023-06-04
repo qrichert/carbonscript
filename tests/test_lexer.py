@@ -115,6 +115,7 @@ class TestLexer(unittest.TestCase):
             'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= = ° '
             + " ".join(DECL_KEYWORDS)
             + " ".join(LITERAL_KEYWORDS)
+            + "##ml comment##\n# sl comment"
         )
         cls._assert_script_uses_all_available_types(cls.script_using_all_tokens)
 
@@ -184,7 +185,7 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(tokens, expected)
 
     def test_token_string(self) -> None:
-        tokens: list[Token] = lex_script('"hello, world\n" "#2"')
+        tokens: list[Token] = lex_script('"hello, world\n" "second string"')
         self.assertListEqual(
             tokens,
             [
@@ -193,7 +194,7 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.DBLQUOTE, '"'),
                 Token(TokenType.WHITESPACE, " "),
                 Token(TokenType.DBLQUOTE, '"'),
-                Token(TokenType.STRING, "#2"),
+                Token(TokenType.STRING, "second string"),
                 Token(TokenType.DBLQUOTE, '"'),
                 Token(TokenType.EOF),
             ],
@@ -217,6 +218,30 @@ class TestLexer(unittest.TestCase):
             [
                 Token(TokenType.DBLQUOTE, '"'),
                 Token(TokenType.STRING, "abc_123"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_string_with_ml_comment(self) -> None:
+        tokens: list[Token] = lex_script('"abc ## 123 ## 456 ## def"')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, "abc ## 123 ## 456 ## def"),
+                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_string_with_sl_comment(self) -> None:
+        tokens: list[Token] = lex_script('"abc # 123 # def"')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DBLQUOTE, '"'),
+                Token(TokenType.STRING, "abc # 123 # def"),
+                Token(TokenType.DBLQUOTE, '"'),
                 Token(TokenType.EOF),
             ],
         )
@@ -414,6 +439,119 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.NEWLINE, "\n"),
                 Token(TokenType.WHITESPACE, "  "),
                 Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_ml_comment(self) -> None:
+        tokens: list[Token] = lex_script("123 ## ml \n comment ## 456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.MLCOMMENT, "## ml \n comment ##"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_ml_comment_empty(self) -> None:
+        tokens: list[Token] = lex_script("123 #### 456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.MLCOMMENT, "####"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_ml_comment_unterminated(self) -> None:
+        tokens: list[Token] = lex_script("123 ## ml \n comment")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.MLCOMMENT, "## ml \n comment"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_ml_comment_with_string(self) -> None:
+        tokens: list[Token] = lex_script('## "with \n string" ##')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.MLCOMMENT, '## "with \n string" ##'),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_sl_comment(self) -> None:
+        tokens: list[Token] = lex_script("123 # sl comment\n 456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.SLCOMMENT, "# sl comment"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_sl_comment_empty(self) -> None:
+        tokens: list[Token] = lex_script("123 #\n 456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.SLCOMMENT, "#"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "456"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_sl_comment_unterminated(self) -> None:
+        tokens: list[Token] = lex_script("123 # sl comment")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.SLCOMMENT, "# sl comment"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_sl_comment_nested(self) -> None:
+        tokens: list[Token] = lex_script("# nested # comment")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.SLCOMMENT, "# nested # comment"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_sl_comment_with_string(self) -> None:
+        tokens: list[Token] = lex_script('# "with string"\n')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.SLCOMMENT, '# "with string"'),
+                Token(TokenType.NEWLINE, "\n"),
                 Token(TokenType.EOF),
             ],
         )

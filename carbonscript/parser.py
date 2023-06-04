@@ -5,6 +5,12 @@ from typing import Union
 
 from .lexer import Token, TokenType
 
+GARBAGE_TOKENS: set = {
+    TokenType.WHITESPACE,
+    TokenType.MLCOMMENT,
+    TokenType.SLCOMMENT,
+}
+
 
 class ErrorType(enum.Enum):
     SYNTAX = "SYNTAX"
@@ -151,7 +157,7 @@ class Parser:
         self.__init__()
         self.tokens = tokens
         while True:
-            self._discard_empty_lines()
+            self._discard_garbage_from_left_of_statement()
             if self._current().type == TokenType.EOF:
                 break
             stmt: Stmt = self._parse_declaration()
@@ -224,16 +230,20 @@ class Parser:
                 self._current(),
             )
 
-    def _discard_empty_lines(self) -> None:
-        def is_empty_line() -> bool:
-            return self._current().type == TokenType.NEWLINE
+    def _discard_garbage_from_left_of_statement(self) -> None:
+        """Remove tokens without meaning from left of statements.
 
-        def is_whitespace_only_line() -> bool:
-            return self._current().type == TokenType.WHITESPACE and (
-                self._peek().type in (TokenType.NEWLINE, TokenType.EOF)
-            )
+            \n\t## comment ## var foo = 1
 
-        while is_empty_line() or is_whitespace_only_line():
+        Would be cleaned up to:
+
+            var foo = 1
+
+        If we have newlines (\n) left, they represent empty lines.
+        Meaningful end-of-statement newlines are consumed with the
+        statements they end.
+        """
+        while self._current().type in GARBAGE_TOKENS | {TokenType.NEWLINE}:
             self._consume()
 
     def _parse_expr(self) -> Expr:
@@ -443,7 +453,7 @@ class Parser:
         )
 
     def _consume_token_if_matches(self, *token_types) -> TokenType | None:
-        self._discard_whitespace()
+        self._discard_garbage_tokens()
         for token_type in token_types:
             if token_type == self._current().type:
                 self._consume()
@@ -468,8 +478,8 @@ class Parser:
                 )
         return None
 
-    def _discard_whitespace(self) -> None:
-        while self._current().type == TokenType.WHITESPACE:
+    def _discard_garbage_tokens(self) -> None:
+        while self._current().type in GARBAGE_TOKENS:
             self._consume()
 
     def _consume(self, nb_tokens: int = 1) -> None:
