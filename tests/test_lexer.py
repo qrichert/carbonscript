@@ -234,6 +234,40 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
+    def test_token_string_double_quote_escaped(self) -> None:
+        tokens: list[Token] = lex_script(r'"\"foo\""')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.STRING, r'"\"foo\""'),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_string_double_quote_escaped_multiple_odd(self) -> None:
+        tokens: list[Token] = lex_script(r'"\\\"foo\\\""')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.STRING, r'"\\\"foo\\\""'),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_string_double_quote_escaped_multiple_even(self) -> None:
+        tokens: list[Token] = lex_script(r'"\\"foo\\""')
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.STRING, r'"\\"'),
+                Token(TokenType.IDENTIFIER, "foo"),
+                Token(TokenType.UNKNOWN, "\\"),
+                Token(TokenType.UNKNOWN, "\\"),
+                Token(TokenType.STRING, '""'),
+                Token(TokenType.EOF),
+            ],
+        )
+
     def test_token_identifier(self) -> None:
         tokens: list[Token] = lex_script("abc_123 _0ABC")
         self.assertListEqual(

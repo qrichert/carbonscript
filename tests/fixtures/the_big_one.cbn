@@ -39,6 +39,7 @@ const unary_bang = !true
 const number_int = 36
 const number_float = 1.618
 const string = "hello, world\n"
+const string_with_escapes = "\"foo\""
 const boolean_true = true
 const boolean_false = false
 const null_value = null

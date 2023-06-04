@@ -341,6 +341,7 @@ class TestTheBigOne(unittest.TestCase):
                 "number_int": (D("36"), True),
                 "number_float": (D("1.618"), True),
                 "string": ("hello, world\\n", True),
+                "string_with_escapes": ('\\"foo\\"', True),
                 "boolean_true": (True, True),
                 "boolean_false": (False, True),
                 "null_value": (None, True),

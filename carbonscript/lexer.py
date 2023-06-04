@@ -73,6 +73,10 @@ PATTERNS: list[tuple[re.Pattern, TokenType]] = [
     (re.compile(r"$"), TokenType.EOF),
 ]
 
+ENDS_WITH_ODD_NUMBER_OF_ESCAPE_BACKSLASHES: re.Pattern = re.compile(
+    r"(?<!\\)(\\\\)*\\$"
+)
+
 
 class Token:
     def __init__(
@@ -192,6 +196,10 @@ class Lexer:
             if self._context == Context.NONE:
                 self._context = Context.STRING
             elif self._context == Context.STRING:
+                if ENDS_WITH_ODD_NUMBER_OF_ESCAPE_BACKSLASHES.search(
+                    self._last_token.value
+                ):
+                    return
                 self._context = Context.NONE
             return
 

@@ -403,12 +403,22 @@ class TestLiterals(unittest.TestCase):
             parse_expression('"')
         self.assertEqual(ctx.exception.token, Token(TokenType.STRING, '"'))
 
-    # TODO: Allow escape sequence
-    # def test_string_double_quote_escaped(self) -> None:
-    #     self.assertEqual(
-    #         parse_expression(r'"\"foo\""'),
-    #         Literal(TokenType.STRING, '"foo"'),
-    #     )
+    def test_string_double_quote_escaped(self) -> None:
+        self.assertEqual(
+            parse_expression(r'"\"foo\""'),
+            Literal(TokenType.STRING, r"\"foo\""),
+        )
+
+    def test_string_double_quote_escaped_multiple_odd(self) -> None:
+        self.assertEqual(
+            parse_expression(r'"\\\"foo\\\""'),
+            Literal(TokenType.STRING, r"\\\"foo\\\""),
+        )
+
+    def test_string_double_quote_escaped_multiple_even(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression(r'"\\"foo\\""'),
+        self.assertEqual(ctx.exception.token, Token(TokenType.IDENTIFIER, "foo"))
 
     def test_literal_keyword_true(self) -> None:
         self.assertEqual(

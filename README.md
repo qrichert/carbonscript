@@ -33,6 +33,10 @@ Strings of text are delimited by double quotes:
 
 - `"hello, world\n"`
 
+Double quotes can be escaped:
+
+- `"\"foo\""`
+
 ## Arithmetic Operators
 
 - `**` Power
