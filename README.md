@@ -155,7 +155,9 @@ var_decl    → ("var" | "const") IDENTIFIER "=" expr "\n"
 
 
 stmt        → expr_stmt
+            | block
 expr_stmt   → expr "\n"
+block       → INDENT declaration+ DEDENT
 
 
 expr        → assignment

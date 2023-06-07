@@ -9,6 +9,7 @@ from carbonscript.lexer import Lexer, Token, TokenType
 from carbonscript.parser import (
     Assign,
     BinOp,
+    Block,
     ConstDecl,
     Expr,
     ExprStmt,
@@ -16,6 +17,7 @@ from carbonscript.parser import (
     Literal,
     ParseError,
     Parser,
+    Preprocessor,
     Stmt,
     Unary,
     VarDecl,
@@ -44,6 +46,11 @@ def parse_script(script: str) -> list[Stmt]:
     return Parser().parse(tokens)
 
 
+def preprocess_script(script: str) -> list[Token]:
+    tokens: list[Token] = Lexer().lex(script)
+    return Preprocessor().preprocess(tokens)
+
+
 class TestExpr(unittest.TestCase):
     def test_repr_expr(self) -> None:
         expr = Expr()
@@ -52,6 +59,27 @@ class TestExpr(unittest.TestCase):
     def test_str_expr(self) -> None:
         expr = Expr()
         self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_block(self) -> None:
+        block = Block(
+            [
+                ExprStmt(Literal(TokenType.STRING, "123")),
+                ExprStmt(Literal(TokenType.STRING, "abc")),
+            ]
+        )
+        self.assertEqual(
+            repr(block),
+            "Block(ExprStmt(Literal(STRING, '123')), ExprStmt(Literal(STRING, 'abc')))",
+        )
+
+    def test_str_block(self) -> None:
+        block = Block(
+            [
+                ExprStmt(Literal(TokenType.STRING, "123")),
+                ExprStmt(Literal(TokenType.STRING, "abc")),
+            ]
+        )
+        self.assertEqual(str(block), repr(block))
 
     def test_repr_binop(self) -> None:
         expr = BinOp(
@@ -96,39 +124,39 @@ class TestExpr(unittest.TestCase):
         expr = Group(Literal(TokenType.NUMBER, "42"))
         self.assertEqual(str(expr), repr(expr))
 
-    def test_repr_declare_var(self) -> None:
-        expr = VarDecl(
+    def test_repr_var_decl(self) -> None:
+        decl = VarDecl(
             Literal(TokenType.IDENTIFIER, "foo"),
             Literal(TokenType.NUMBER, "42"),
         )
         self.assertEqual(
-            repr(expr),
+            repr(decl),
             "VarDecl(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
         )
 
-    def test_str_declare_var(self) -> None:
-        expr = VarDecl(
+    def test_str_var_decl(self) -> None:
+        decl = VarDecl(
             Literal(TokenType.IDENTIFIER, "foo"),
             Literal(TokenType.NUMBER, "42"),
         )
-        self.assertEqual(str(expr), repr(expr))
+        self.assertEqual(str(decl), repr(decl))
 
-    def test_repr_declare_const(self) -> None:
-        expr = ConstDecl(
+    def test_repr_const_decl(self) -> None:
+        decl = ConstDecl(
             Literal(TokenType.IDENTIFIER, "foo"),
             Literal(TokenType.NUMBER, "42"),
         )
         self.assertEqual(
-            repr(expr),
+            repr(decl),
             "ConstDecl(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
         )
 
-    def test_str_declare_const(self) -> None:
-        expr = ConstDecl(
+    def test_str_const_decl(self) -> None:
+        decl = ConstDecl(
             Literal(TokenType.IDENTIFIER, "foo"),
             Literal(TokenType.NUMBER, "42"),
         )
-        self.assertEqual(str(expr), repr(expr))
+        self.assertEqual(str(decl), repr(decl))
 
     def test_repr_assign(self) -> None:
         expr = Assign(
@@ -146,6 +174,102 @@ class TestExpr(unittest.TestCase):
             Literal(TokenType.NUMBER, "42"),
         )
         self.assertEqual(str(expr), repr(expr))
+
+
+class TestPreprocessor(unittest.TestCase):
+    def test_no_side_effects_on_input(self) -> None:
+        tokens: list[Token] = [
+            Token(TokenType.NUMBER, "3"),
+            Token(TokenType.PLUS, "+"),
+            Token(TokenType.NUMBER, "1"),
+            Token(TokenType.EOF),
+        ]
+        preprocessor = Preprocessor()
+        preprocessor.preprocess(tokens)
+        self.assertIs(tokens, preprocessor.tokens)
+
+    def test_eliminate_ml_comments(self) -> None:
+        tokens = preprocess_script("## hello ##")
+        self.assertListEqual(tokens, [Token(TokenType.EOF)])
+
+    def test_eliminate_sl_comments(self) -> None:
+        tokens = preprocess_script("# hello")
+        self.assertListEqual(tokens, [Token(TokenType.EOF)])
+
+    def test_eliminate_empty_lines(self) -> None:
+        tokens = preprocess_script("\n\n\n")
+        self.assertListEqual(tokens, [Token(TokenType.EOF)])
+
+    def test_inject_newline_before_end_of_file_if_none(self) -> None:
+        self.assertListEqual(
+            preprocess_script("foo"),
+            [
+                Token(TokenType.IDENTIFIER, "foo"),
+                Token(TokenType.NEWLINE),  # No value, it is injected.
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_no_inject_newline_before_end_of_file_if_any(self) -> None:
+        self.assertListEqual(
+            preprocess_script("foo\n"),
+            [
+                Token(TokenType.IDENTIFIER, "foo"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_multiple_statements(self) -> None:
+        self.assertListEqual(
+            preprocess_script('"hello, world\n" \n    "123"\n"abc"'),
+            [
+                Token(TokenType.STRING, "hello, world\n"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.INDENT),
+                Token(TokenType.STRING, "123"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.DEDENT),
+                Token(TokenType.STRING, "abc"),
+                Token(TokenType.NEWLINE),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_empty_lines(self) -> None:
+        self.assertListEqual(
+            preprocess_script('\n\n\n"hello, world\n" \n\n\n    "123"\n"abc"\n\n\n'),
+            preprocess_script('"hello, world\n" \n    "123"\n"abc"\n'),
+        )
+
+    def test_multiple_blocks(self) -> None:
+        self.assertListEqual(
+            preprocess_script("0\n    1\n        2\n            3\n        2\n"),
+            [
+                Token(TokenType.NUMBER, "0"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.INDENT),
+                Token(TokenType.NUMBER, "1"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.INDENT),
+                Token(TokenType.NUMBER, "2"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.INDENT),
+                Token(TokenType.NUMBER, "3"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.DEDENT),
+                Token(TokenType.NUMBER, "2"),
+                Token(TokenType.NEWLINE, "\n"),
+                Token(TokenType.DEDENT),
+                Token(TokenType.DEDENT),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_cannot_ident_more_than_one_block(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            preprocess_script("0\n        1\n"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.NUMBER, "1"))
 
 
 class TestParser(unittest.TestCase):
@@ -185,14 +309,9 @@ class TestParser(unittest.TestCase):
         )
 
     def test_ml_comment_before_expression(self) -> None:
-        self.assertEqual(
-            parse_expression("## foo ## 2+12"),
-            BinOp(
-                Literal(TokenType.NUMBER, D("2")),
-                TokenType.PLUS,
-                Literal(TokenType.NUMBER, D("12")),
-            ),
-        )
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("## foo ## 2+12")
+        self.assertEqual(ctx.exception.token, Token(TokenType.MLCOMMENT, "## foo ##"))
 
     def test_ml_comment_inside_expression(self) -> None:
         self.assertEqual(
@@ -248,6 +367,82 @@ class TestParser(unittest.TestCase):
             ),
         )
 
+    def test_statements_can_only_be_preceded_by_whitespace(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("## comment ## var i = 42")
+        self.assertEqual(
+            ctx.exception.token, Token(TokenType.MLCOMMENT, "## comment ##")
+        )
+
+    def test_statements_can_only_be_preceded_by_spaces(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("fake_stmt\n\tvar i = 42")
+        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "\t"))
+
+    # def test_first_statement_cannot_be_indented(self) -> None:
+    #     with self.assertRaises(ParseError) as ctx:
+    #         parse_script("    var i = 42")
+    #     self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
+
+    # TODO: replace fake_stmt with an `if (true)` block.
+    def test_indent_must_be_a_multiple_of_four_spaces(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("fake_stmt\n   var i = 42")
+        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "   "))
+
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("fake_stmt\n     var i = 42")
+        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "     "))
+
+        self.assertEqual(
+            parse_script("fake_stmt\n    var i = 42"),
+            [
+                # TODO: Should become a Block once we've got "if".
+                ExprStmt(Literal(TokenType.IDENTIFIER, "fake_stmt")),
+                Block(
+                    [
+                        VarDecl(
+                            Literal(TokenType.IDENTIFIER, "i"),
+                            Literal(TokenType.NUMBER, D("42")),
+                        )
+                    ]
+                ),
+            ],
+        )
+
+    # def test_indent_level_0(self) -> None:
+    #     parser = parse_script_and_return_parser("const foo = bar")
+    #     self.assertEqual(parser._current_indent, 0)
+    #     self.assertEqual(parser._previous_indent, 0)
+
+    # def test_indent_level_1(self) -> None:
+    #     parser = parse_script_and_return_parser("fake_stmt\n    const foo = bar")
+    #     self.assertEqual(parser._current_indent, 1)
+    #     self.assertEqual(parser._previous_indent, 0)
+
+    # TODO must implement if(), real block stmt for it to work
+    # def test_indent_level_2(self) -> None:
+    #     parser = parse_script_and_return_parser(
+    #         "fake_stmt\n    fake_stmt\n        const foo = bar"
+    #     )
+    #     self.assertEqual(parser._current_indent, 2)
+    #     self.assertEqual(parser._previous_indent, 1)
+
+    # def test_cannot_indent_multiple_blocks_at_once(self) -> None:
+    #     with self.assertRaises(ParseError) as ctx:
+    #         parse_script_and_return_parser("fake_stmt\n        const foo = bar")
+    #     self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "const"))
+
+    # def test_block(self) -> None:
+    #     self.assertListEqual(
+    #         parse_script("fake_stmt\n    fake_stmt"),
+    #         [
+    #             ExprStmt(Literal(TokenType.STRING, "hello, world\n")),
+    #             ExprStmt(Literal(TokenType.STRING, "123")),
+    #             ExprStmt(Literal(TokenType.STRING, "abc")),
+    #         ],
+    #     )
+
 
 class TestStatements(unittest.TestCase):
     def test_empty(self) -> None:
@@ -258,10 +453,10 @@ class TestStatements(unittest.TestCase):
 
     def test_multiple_statements(self) -> None:
         self.assertListEqual(
-            parse_script('"hello, world\n" \n "123"\n"abc"'),
+            parse_script('"hello, world\n" \n    "123"\n"abc"'),
             [
                 ExprStmt(Literal(TokenType.STRING, "hello, world\n")),
-                ExprStmt(Literal(TokenType.STRING, "123")),
+                Block([ExprStmt(Literal(TokenType.STRING, "123"))]),
                 ExprStmt(Literal(TokenType.STRING, "abc")),
             ],
         )
@@ -273,10 +468,10 @@ class TestStatements(unittest.TestCase):
 
     def test_empty_lines(self) -> None:
         self.assertListEqual(
-            parse_script('\n\n\n"hello, world\n" \n "123"\n"abc"\n\n\n'),
+            parse_script('\n\n\n"hello, world\n" \n    "123"\n"abc"\n\n\n'),
             [
                 ExprStmt(Literal(TokenType.STRING, "hello, world\n")),
-                ExprStmt(Literal(TokenType.STRING, "123")),
+                Block([ExprStmt(Literal(TokenType.STRING, "123"))]),
                 ExprStmt(Literal(TokenType.STRING, "abc")),
             ],
         )
@@ -315,7 +510,7 @@ class TestStatements(unittest.TestCase):
     def test_declaration_var_without_value(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("var foo"),
-        self.assertEqual(ctx.exception.token, Token(TokenType.EOF))
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_declaration_var_assigning_to_constant(self) -> None:
         with self.assertRaises(ParseError) as ctx:
@@ -345,7 +540,7 @@ class TestStatements(unittest.TestCase):
     def test_declaration_const_without_value(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("const foo"),
-        self.assertEqual(ctx.exception.token, Token(TokenType.EOF))
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_declaration_const_assigning_to_constant(self) -> None:
         with self.assertRaises(ParseError) as ctx:

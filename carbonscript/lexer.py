@@ -26,6 +26,8 @@ class TokenType(enum.Enum):
     LPAREN = "LPAREN"  # (
     RPAREN = "RPAREN"  # )
     NEWLINE = "NEWLINE"  # \n
+    INDENT = "INDENT"  # Indent marker (empty).
+    DEDENT = "DEDENT"  # Dedent marker (empty).
     WHITESPACE = "WHITESPACE"  # <space>, \t, etc. (but not \n)
     MLCOMMENT = "MLCOMMENT"  # ## Multi line comment ##
     SLCOMMENT = "SLCOMMENT"  # # Single line comment
@@ -147,6 +149,7 @@ class Lexer:
     def _find_next_token(self) -> Token:
         text_view: str = self.script[self._pos :]
         for pattern, token_type in PATTERNS:
+            match: re.Match
             if match_ := pattern.match(text_view):
                 value: str = match_.group(0)
                 if token_type == TokenType.IDENTIFIER:

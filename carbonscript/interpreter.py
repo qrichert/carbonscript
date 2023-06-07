@@ -7,6 +7,7 @@ from .lexer import TokenType
 from .parser import (
     Assign,
     BinOp,
+    Block,
     ConstDecl,
     Expr,
     ExprStmt,
@@ -26,7 +27,6 @@ class Scope:
         self.parent: Scope | None = parent
 
     def to_dict(self) -> dict:
-        values: dict = {}
         return self._values
 
     def _has_value(self, identifier: str) -> bool:
@@ -123,14 +123,23 @@ class Interpreter:
     def _interpret_declaration(self, stmt: Stmt) -> LiteralValue | None:
         if isinstance(stmt, ExprStmt):
             return self._interpret_expr_stmt(stmt)
+        if isinstance(stmt, Block):
+            return self._interpret_block(stmt)
         if isinstance(stmt, VarDecl):
             if isinstance(stmt, ConstDecl):
                 return self._interpret_var_decl(stmt, const=True)
             return self._interpret_var_decl(stmt)
-        assert False, "Unmatched statement type."
+        assert False, f"Unmatched statement type {stmt.__class__.__name__!r}."
 
     def _interpret_expr_stmt(self, stmt: ExprStmt) -> LiteralValue:
         return self._interpret_expr(stmt.expression)
+
+    def _interpret_block(self, block: Block) -> None:
+        self.env.push_scope()
+        stmt: Stmt
+        for stmt in block.statements:
+            self._interpret_declaration(stmt)
+        self.env.pop_scope()
 
     def _interpret_var_decl(self, stmt: VarDecl, const: bool = False) -> None:
         identifier: str = stmt.lidentifier.value
@@ -148,7 +157,7 @@ class Interpreter:
             return self._interpret_group(expr)
         if isinstance(expr, Assign):
             return self._interpret_assignment(expr)
-        assert False, "Unmatched expression type."
+        assert False, f"Unmatched expression type {expr.__class__.__name__!r}."
 
     def _interpret_binop(self, binop: BinOp) -> LiteralValue:
         lval: LiteralValue = self._interpret_expr(binop.lexpr)
@@ -183,7 +192,7 @@ class Interpreter:
                 return lval % rval
             case TokenType.DBLSTAR:
                 return lval**rval
-        assert False, "Unmatched binary operator."
+        assert False, f"Unmatched binary operator {op.__class__.__name__!r}."
 
     def _interpret_unary_expr(self, unary: Unary) -> LiteralValue:
         value: LiteralValue = self._interpret_expr(unary.rexpr)
@@ -195,7 +204,7 @@ class Interpreter:
                 return -value
             case TokenType.BANG:
                 return not value
-        assert False, "Unmatched unary operator."
+        assert False, f"Unmatched unary operator {op.__class__.__name__!r}."
 
     def _interpret_literal(self, literal: Literal) -> LiteralValue:
         if literal.literal == TokenType.IDENTIFIER:

@@ -5,12 +5,6 @@ from typing import Union
 
 from .lexer import Token, TokenType
 
-GARBAGE_TOKENS: set = {
-    TokenType.WHITESPACE,
-    TokenType.MLCOMMENT,
-    TokenType.SLCOMMENT,
-}
-
 
 class ErrorType(enum.Enum):
     SYNTAX = "SYNTAX"
@@ -110,7 +104,18 @@ class ExprStmt(Stmt):
     expression: Expr
 
     def __repr__(self) -> str:
-        return f"ExprStmt({self.expression})"
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({self.expression})"
+
+
+@dataclass
+class Block:
+    statements: list[Stmt]
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        stmts: str = ", ".join([repr(stmt) for stmt in self.statements])
+        return f"{class_name}({stmts})"
 
 
 @dataclass(repr=False)
@@ -138,6 +143,191 @@ class ConstDecl(VarDecl):
         return super().__repr__()
 
 
+class Preprocessor:
+    """Preprocess the tokens to make the parser's job easier.
+
+    This is clearly not the most efficient way to do this, as it adds
+    another pass, but it's one of the cleanest, most straightforward
+    solution to the cleaning problem.
+
+    The lexer is left to do one task: identify patterns. It does not
+    need to know about the quirks of the language. And the parser too is
+    left to do one task: generate an AST from tokens. It does not need
+    to bother itself with dirty input.
+
+    The preprocessor joins the two by preparing an input that's easy to
+    parse, without requiring additional logic.
+    """
+
+    GARBAGE_TOKENS: set = {
+        TokenType.WHITESPACE,
+        TokenType.MLCOMMENT,
+        TokenType.SLCOMMENT,
+    }
+
+    EOL_TOKENS: set = {
+        TokenType.NEWLINE,
+        TokenType.EOF,
+    }
+
+    def __init__(self) -> None:
+        self.tokens: list[Token] = []
+        self.preprocessed_tokens: list[Token] = []
+        self._pos: int = 0
+        self._current_indent: int = 0
+        self._previous_indent: int = 0
+
+    def preprocess(self, tokens: list[Token]) -> list[Token]:
+        self.__init__()
+        self.tokens = tokens
+        while True:  # Line per line.
+            was_line_discarded: bool = self._discard_line_if_only_garbage()
+            if not was_line_discarded:
+                self._process_line()
+            if self._current().type == TokenType.NEWLINE:
+                self._process_newline()
+                continue
+            if self._current().type == TokenType.EOF:
+                self._process_eof()
+                break
+        return self.preprocessed_tokens
+
+    def _discard_line_if_only_garbage(self) -> bool:
+        look_ahead: int = 0  # = How many tokens are garbage.
+        token: Token
+        while (token := self._peek(look_ahead)).type not in self.EOL_TOKENS:
+            if token.type not in self.GARBAGE_TOKENS:
+                return False
+            look_ahead += 1
+        # Here, attained newline, saw only garbage.
+        self._discard(look_ahead)
+        return True
+
+    def _process_line(self) -> None:
+        self._process_indent()
+        self._check_no_garbage_between_indent_and_statement()
+        self._process_statement()
+
+    def _process_indent(self) -> None:
+        self._previous_indent = self._current_indent
+
+        if self._current().type != TokenType.WHITESPACE:
+            self._current_indent = 0
+        else:
+            whitespace: str = self._current().value
+            self._discard()
+
+            nb_chars: int = len(whitespace)
+            if nb_chars % 4 != 0:
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "incorrect indent, expected a multiple of four spaces",
+                    self._previous(),
+                )
+            self._current_indent = nb_chars // 4
+
+        self._inject_block_markers()
+
+    def _inject_block_markers(self) -> None:
+        diff: int = self._current_indent - self._previous_indent
+        if diff == 0:
+            return
+        elif diff > 0:
+            if diff > 1:
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "indented too many blocks",
+                    self._current(),
+                )
+            self._inject_n_tokens(TokenType.INDENT, diff)
+        elif diff < 0:
+            self._inject_n_tokens(TokenType.DEDENT, abs(diff))
+
+    def _inject_n_tokens(self, token_type: TokenType, nb_tokens: int) -> None:
+        line: int = self._current().line
+        column: int = self._current().column
+        for _ in range(nb_tokens):
+            token: Token = Token(token_type, line=line, column=column)
+            self.preprocessed_tokens.append(token)
+
+    def _check_no_garbage_between_indent_and_statement(self) -> None:
+        if self._current().type in self.GARBAGE_TOKENS:
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "statements can only be preceded by block indents",
+                self._current(),
+            )
+
+    def _process_statement(self) -> None:
+        token: Token
+        while self._current().type not in self.EOL_TOKENS:
+            while self._current().type in self.GARBAGE_TOKENS:
+                self._discard()
+
+            if self._current().type == TokenType.STRING:
+                self._clean_string()
+
+            if self._current().type not in self.EOL_TOKENS:
+                self._keep()
+
+    def _clean_string(self) -> None:
+        value: str = self._current().value
+        if len(value) < 2 or not value.endswith('"'):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "unterminated string",
+                self._current(),
+            )
+        self._current().value = value[1:-1]
+
+    def _process_newline(self) -> None:
+        last_token: Token | None = self._last_preprocessed()
+        if not last_token or last_token.type == TokenType.NEWLINE:
+            self._discard()
+        else:
+            self._keep()
+
+    def _process_eof(self) -> None:
+        self._ensure_ends_with_newline()
+        self._inject_n_tokens(TokenType.DEDENT, self._current_indent)
+        self._keep()
+
+    def _ensure_ends_with_newline(self) -> None:
+        last_token: Token | None = self._last_preprocessed()
+        if last_token and last_token.type != TokenType.NEWLINE:
+            self._inject_n_tokens(TokenType.NEWLINE, 1)
+
+    def _keep(self) -> None:
+        self.preprocessed_tokens.append(self._current())
+        self._pos += 1
+
+    def _discard(self, nb_tokens: int = 1) -> None:
+        self._pos += nb_tokens
+
+    def _backtrack(self) -> None:
+        self._pos -= 1
+
+    def _previous(self) -> Token | None:
+        if self._pos == 0:  # /!\ Negative indexes start from the end.
+            return None
+        try:
+            return self.tokens[self._pos - 1]
+        except IndexError:
+            return None
+
+    def _current(self) -> Token:
+        return self.tokens[self._pos]
+
+    def _peek(self, nb_tokens: int = 1) -> Token | None:
+        return self.tokens[self._pos + nb_tokens]
+
+    def _last_preprocessed(self) -> Token | None:
+        try:
+            return self.preprocessed_tokens[-1]
+        except IndexError:
+            return None
+
+
 class Parser:
     """Build Abstract Syntax Tree (AST) from tokens.
 
@@ -146,6 +336,7 @@ class Parser:
 
     def __init__(self) -> None:
         self.tokens: list[Token] = []
+        self._tokens: list[Token] = []
         self.statements: list[Stmt] = []
         self._pos: int = 0
 
@@ -156,8 +347,8 @@ class Parser:
         """
         self.__init__()
         self.tokens = tokens
+        self._tokens = Preprocessor().preprocess(tokens)
         while True:
-            self._discard_garbage_from_left_of_statement()
             if self._current().type == TokenType.EOF:
                 break
             stmt: Stmt = self._parse_declaration()
@@ -173,13 +364,13 @@ class Parser:
         if self._consume_token_if_matches(TokenType.DECLKEYWORD):
             match self._previous().value:
                 case "var":
-                    return self._var_decl()
+                    return self._parse_var_decl()
                 case "const":
-                    return self._var_decl(const=True)
+                    return self._parse_var_decl(const=True)
             assert False, "Unmatched declaration keyword."
         return self._parse_stmt()
 
-    def _var_decl(self, const: bool = False) -> VarDecl | ConstDecl:
+    def _parse_var_decl(self, const: bool = False) -> VarDecl | ConstDecl:
         """Parse variable declaration.
 
         var_decl → ("var" | "const") IDENTIFIER "=" expr "\n"
@@ -203,12 +394,45 @@ class Parser:
             self._current(),
         )
 
-    def _parse_stmt(self) -> Stmt:
+    def _parse_stmt(self) -> Stmt | Block:
         """Parse statement.
 
         stmt → expr_stmt
+             | block
         """
+        if block := self._parse_block():
+            return block
         return self._parse_expr_stmt()
+
+    def _parse_block(self) -> Block | None:
+        """Parse block.
+
+        block → INDENT declaration+ UNINDENT
+        """
+        if self._consume_token_if_matches(TokenType.INDENT):
+            statements: list[Stmt] = []
+            while self._current().type != TokenType.DEDENT:
+                if self._current().type == TokenType.EOF:
+                    break
+                declaration: Declaration = self._parse_declaration()
+                statements.append(declaration)
+            if (
+                not self._consume_token_if_matches(TokenType.DEDENT)
+                and self._current().type != TokenType.EOF
+            ):
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "unterminated block",
+                    self._current(),
+                )
+            if not statements:
+                ParseError(
+                    ErrorType.SYNTAX,
+                    "empty block",
+                    self._current(),
+                )
+            return Block(statements)
+        return None
 
     def _parse_expr_stmt(self) -> ExprStmt:
         """Parse expression statement.
@@ -220,31 +444,12 @@ class Parser:
         return ExprStmt(expr)
 
     def _match_end_of_statement(self) -> None:
-        if (
-            not self._consume_token_if_matches(TokenType.NEWLINE)
-            and self._current().type != TokenType.EOF
-        ):
+        if not self._consume_token_if_matches(TokenType.NEWLINE):
             raise ParseError(
                 ErrorType.SYNTAX,
                 "multiple statements on a single line",
                 self._current(),
             )
-
-    def _discard_garbage_from_left_of_statement(self) -> None:
-        """Remove tokens without meaning from left of statements.
-
-            \n\t## comment ## var foo = 1
-
-        Would be cleaned up to:
-
-            var foo = 1
-
-        If we have newlines (\n) left, they represent empty lines.
-        Meaningful end-of-statement newlines are consumed with the
-        statements they end.
-        """
-        while self._current().type in GARBAGE_TOKENS | {TokenType.NEWLINE}:
-            self._consume()
 
     def _parse_expr(self) -> Expr:
         """Parse expression.
@@ -419,13 +624,6 @@ class Parser:
             return Literal(TokenType.NUMBER, value)
         if self._consume_token_if_matches(TokenType.STRING):
             value: str = self._previous().value
-            if len(value) < 2 or not value.endswith('"'):
-                raise ParseError(
-                    ErrorType.SYNTAX,
-                    "unterminated string",
-                    self._previous(),
-                )
-            value = value[1:-1]
             return Literal(TokenType.STRING, value)
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
             value: str = self._previous().value
@@ -449,6 +647,15 @@ class Parser:
                     self._previous(),
                 )
             return Group(expr)
+        if self._current().type in (TokenType.INDENT, TokenType.DEDENT):
+            indent: str = (
+                "indent" if self._current().type == TokenType.INDENT else "dedent"
+            )
+            raise ParseError(
+                ErrorType.SYNTAX,
+                f"unexpected {indent}",
+                self._current(),
+            )
         raise ParseError(
             ErrorType.SYNTAX,
             f"invalid symbol {self._current().value!r}",
@@ -456,27 +663,22 @@ class Parser:
         )
 
     def _consume_token_if_matches(self, *token_types) -> TokenType | None:
-        self._discard_garbage_tokens()
         for token_type in token_types:
             if token_type == self._current().type:
                 self._consume()
                 return token_type
         return None
 
-    def _discard_garbage_tokens(self) -> None:
-        while self._current().type in GARBAGE_TOKENS:
-            self._consume()
-
     def _consume(self) -> None:
         self._pos += 1
 
-    def _current(self) -> Token:
-        return self.tokens[self._pos]
-
-    def _previous(
-        self,
-    ) -> Token | None:
+    def _previous(self) -> Token | None:
+        if self._pos == 0:  # /!\ Negative indexes start from the end.
+            return None
         try:
-            return self.tokens[self._pos - 1]
+            return self._tokens[self._pos - 1]
         except IndexError:
             return None
+
+    def _current(self) -> Token:
+        return self._tokens[self._pos]

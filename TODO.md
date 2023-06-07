@@ -1,5 +1,13 @@
 # TODO
 
+Use slots for dataclasses:
+https://stackoverflow.com/a/69661861
+
+Use named tuples for frames and environment + add slots to scope/frames
+(and any objects that may be instantiated a lot of times.)
+
+https://stackoverflow.com/a/16571630
+
 builtins.py (sqrt, stddev, etc.)
 
 https://blog.jetbrains.com/pycharm/2013/06/textmate-bundles-in-pycharm/

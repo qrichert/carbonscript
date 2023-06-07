@@ -10,7 +10,7 @@ This is a multiline comment by the way.
 
 # And that's a single line comment on its own line.
 
-       # Or on an indented line.
+      # Or on a (badly) indented line.
 
 const assignment = true  # And another single line comment.
 
@@ -52,3 +52,31 @@ variable = "redefined value"
 var chained_1 = null
 var chained_2 = null
 const chained_assign = chained_1 = chained_2 = 9
+
+
+var foo = 42
+var bar = 3
+
+# TODO: if (true)
+# TODO:    print(foo)  # 42
+# TODO:    print(bar)  # 3
+
+    foo = 108  # Mutate "foo".
+    var bar = 7  # Redefine "bar".
+
+    var baz = 1.618  # Declare "baz"
+    # var baz = 123.0  # Error, redefinition of "baz".
+
+# TODO: print(foo)  # 108
+# TODO: print(bar)  # 3
+# print(baz)  # Error, out of scope.
+
+
+##
+func hello()
+    var baz = 1
+
+while (true)
+    for (var i in [1..10:1])
+        print(i)
+##

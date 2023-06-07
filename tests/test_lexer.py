@@ -43,6 +43,7 @@ class TestPatterns(unittest.TestCase):
 
         Exceptions:
         *KEYWORD: Keywords are a special case of IDENTIFIER.
+        INDENT/DEDENT: Empty markers added by preprocessor.
         UNKNOWN: Represents a token with no matching type.
         GARBAGE: Specific to the implementation of the lexer.
         """
@@ -53,6 +54,8 @@ class TestPatterns(unittest.TestCase):
             not in (
                 TokenType.DECLKEYWORD,
                 TokenType.LITKEYWORD,
+                TokenType.INDENT,
+                TokenType.DEDENT,
                 TokenType.UNKNOWN,
                 TokenType.GARBAGE,
             )
@@ -121,7 +124,11 @@ class TestLexer(unittest.TestCase):
     def _assert_script_uses_all_available_types(cls, script: str) -> None:
         tokens: list[Token] = lex_script(script)
         token_types_in_string: set[TokenType] = {x.type for x in tokens}
-        available_token_types: set[TokenType] = set(TokenType) - {TokenType.GARBAGE}
+        available_token_types: set[TokenType] = set(TokenType) - {
+            TokenType.GARBAGE,
+            TokenType.INDENT,
+            TokenType.DEDENT,
+        }
 
         diff = available_token_types - token_types_in_string
         if diff:

@@ -1,6 +1,7 @@
 """Test interpreter module."""
 
 import doctest
+import textwrap
 import unittest
 from decimal import Decimal as D
 
@@ -39,6 +40,10 @@ def interpret_script_and_return_env(script: str) -> Environment:
     interpreter: Interpreter = Interpreter()
     interpreter.interpret(statements)
     return interpreter.env
+
+
+def dedent(script: str) -> str:
+    return textwrap.dedent(script).lstrip("\n")
 
 
 class TestEnvironment(unittest.TestCase):
@@ -171,7 +176,7 @@ class TestInterpreter(unittest.TestCase):
         self.assertIs(statements, interpreter.statements)
 
     def test_works_with_empty_lines(self) -> None:
-        interpret_script("      \n\n\n    \n\n\n     ")
+        interpret_script("    \n\n\n        \n\n\n    ")
 
 
 class TestStatements(unittest.TestCase):
@@ -313,6 +318,98 @@ class TestComplexExpressions(unittest.TestCase):
         )
 
 
+class TestScope(unittest.TestCase):
+    def test_modified_in_child_scope(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                    foo = 108
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("108"), False),
+            },
+        )
+
+    def test_redefined_in_child_scope_keeps_value_in_parent_scope(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var bar = 3
+                    var bar = 7
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "bar": (D("3"), False),
+            },
+        )
+
+    def test_redefined_in_child_scope_changes_value(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var bar = 3
+                var biz = 0
+                    var bar = 7
+                    biz = bar
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "bar": (D("3"), False),
+                "biz": (D("7"), False),
+            },
+        )
+
+    def test_declared_in_child_scope_not_in_parent_scope(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                const placeholder = null
+                    var baz = 1.618
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "placeholder": (None, True),
+            },
+        )
+
+    def test_access_declared_in_child_scope(self) -> None:
+        with self.assertRaises(RuntimeError):
+            interpret_script_and_return_env(
+                dedent(
+                    """
+                    const placeholder = null
+                        const baz = 1.618
+                    const foo = baz
+                    """
+                )
+            )
+
+    def test_mutate_const_in_child_scope(self) -> None:
+        with self.assertRaises(RuntimeError):
+            interpret_script_and_return_env(
+                dedent(
+                    """
+                    const foo = null
+                        foo = 1.618
+                    """
+                )
+            )
+
+
 class TestTheBigOne(unittest.TestCase):
     def test_the_big_one(self) -> None:
         with open(THE_BIG_ONE) as f:
@@ -351,6 +448,8 @@ class TestTheBigOne(unittest.TestCase):
                 "chained_1": (D("9"), False),
                 "chained_2": (D("9"), False),
                 "chained_assign": (D("9"), True),
+                "foo": (D("108"), False),
+                "bar": (D("3"), False),
             },
         )
 
