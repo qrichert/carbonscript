@@ -4,9 +4,13 @@ import os
 import sys
 from pathlib import Path
 
-from .interpreter import Interpreter, LiteralValue
-from .lexer import Lexer, Token
-from .parser import ParseError, Parser, Stmt
+from .ast import Stmt
+from .error import ParseError
+from .interpreter import Interpreter
+from .lexer import Lexer
+from .parser import Parser
+from .tokens import Token
+from .values import LiteralValue
 
 CMD_HISTORY_FILE: Path = Path(__file__).parent.resolve() / ".carbonscript_history.txt"
 CLEAR_CMD: str = "cls" if os.name == "nt" else "clear"

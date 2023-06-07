@@ -5,10 +5,14 @@ import textwrap
 import unittest
 from decimal import Decimal as D
 
-import carbonscript.lexer
-from carbonscript.interpreter import Environment, Interpreter, LiteralValue, Scope
-from carbonscript.lexer import Lexer, Token, TokenType
-from carbonscript.parser import BinOp, ExprStmt, Literal, Parser, Stmt
+import carbonscript.interpreter
+from carbonscript.ast import BinOp, ExprStmt, Literal, Stmt
+from carbonscript.environment import Environment
+from carbonscript.interpreter import Interpreter
+from carbonscript.lexer import Lexer
+from carbonscript.parser import Parser
+from carbonscript.tokens import Token, TokenType
+from carbonscript.values import LiteralValue
 
 from .fixtures import THE_BIG_ONE
 
@@ -44,120 +48,6 @@ def interpret_script_and_return_env(script: str) -> Environment:
 
 def dedent(script: str) -> str:
     return textwrap.dedent(script).lstrip("\n")
-
-
-class TestEnvironment(unittest.TestCase):
-    def test_push_scope(self) -> None:
-        env: Environment = Environment()
-        env.push_scope()
-        self.assertEqual(env.scope_id, 1)
-
-    def test_pop_scope(self) -> None:
-        env: Environment = Environment()
-        env.push_scope()
-        env.pop_scope()
-        self.assertEqual(env.scope_id, 0)
-
-    def test_pop_scope_beyond_global(self) -> None:
-        env: Environment = Environment()
-        with self.assertRaises(AssertionError):
-            env.pop_scope()
-
-    def test_scope_id(self) -> None:
-        env: Environment = Environment()
-        self.assertEqual(env.scope_id, 0)
-        env.push_scope()
-        self.assertEqual(env.scope_id, 1)
-        env.push_scope()
-        self.assertEqual(env.scope_id, 2)
-        env.pop_scope()
-        self.assertEqual(env.scope_id, 1)
-        env.pop_scope()
-        self.assertEqual(env.scope_id, 0)
-        env.push_scope()
-        self.assertEqual(env.scope_id, 1)
-
-    def test_get(self) -> None:
-        env: Environment = Environment()
-        env.declare("foo", "bar")
-        self.assertEqual(env.get("foo"), "bar")
-
-    def test_get_undefined(self) -> None:
-        env: Environment = Environment()
-        with self.assertRaises(RuntimeError):
-            env.get("foo")
-
-    def test_declare(self) -> None:
-        env: Environment = Environment()
-        env.declare("foo", "bar")
-        self.assertEqual(env.get("foo"), "bar")
-
-    def test_set(self) -> None:
-        env: Environment = Environment()
-        env.declare("foo", "bar")
-        env.set("foo", "baz")
-        self.assertEqual(env.get("foo"), "baz")
-
-    def test_set_undefined(self) -> None:
-        env: Environment = Environment()
-        with self.assertRaises(RuntimeError):
-            env.set("foo", "bar")
-
-    def test_set_constant(self) -> None:
-        env: Environment = Environment()
-        env.declare("foo", "bar", const=True)
-        with self.assertRaises(RuntimeError):
-            env.set("foo", "baz")
-
-    def test_get_from_parent_scope(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        env.push_scope()
-        self.assertEqual(env.get("global"), "foo")
-
-    def test_set_in_parent_scope(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        env.push_scope()
-        env.set("global", "bar")
-        self.assertEqual(env.get("global"), "bar")
-
-    def test_set_in_parent_scope_then_pop(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        env.push_scope()
-        env.set("global", "bar")
-        env.pop_scope()
-        self.assertEqual(env.get("global"), "bar")
-
-    def test_redefine_over_parent_scope(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        env.push_scope()
-        env.declare("global", "bar")
-        self.assertEqual(env.get("global"), "bar")
-
-    def test_redefine_over_parent_scope_then_pop(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        env.push_scope()
-        env.declare("global", "bar")
-        env.pop_scope()
-        self.assertEqual(env.get("global"), "foo")
-
-    def test_redefine_in_same_scope(self) -> None:
-        env: Environment = Environment()
-        env.declare("global", "foo")
-        with self.assertRaises(RuntimeError):
-            env.declare("global", "bar")
-
-    def test_out_of_scope(self) -> None:
-        env: Environment = Environment()
-        env.push_scope()
-        env.declare("scope1", "bar")
-        env.pop_scope()
-        with self.assertRaises(RuntimeError):
-            env.get("scope1")  # Out of scope.
 
 
 class TestInterpreter(unittest.TestCase):

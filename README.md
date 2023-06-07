@@ -78,7 +78,7 @@ assignment.
 Variables and constants have the exact same behaviour, except constants
 can only be initialized, not reassigned.
 
-```
+```coffee
 var foo = 3
 const bar = foo * 10
 
@@ -102,7 +102,7 @@ of a parent scope variable is possible by redeclaring a local variable
 with the same name. On the other hand it is not possible to redefine a
 local variable.
 
-```
+```coffee
 var foo = 42
 var bar = 3
 
