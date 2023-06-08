@@ -3,15 +3,14 @@ import re
 
 from .tokens import Token, TokenType
 
-DECL_KEYWORDS: set[str] = {
-    "var",
-    "const",
-}
-
-LITERAL_KEYWORDS: set[str] = {
-    "true",
-    "false",
-    "null",
+KEYWORDS: dict[str, TokenType] = {
+    "var": TokenType.DECLKEYWORD,
+    "const": TokenType.DECLKEYWORD,
+    "true": TokenType.LITKEYWORD,
+    "false": TokenType.LITKEYWORD,
+    "null": TokenType.LITKEYWORD,
+    "if": TokenType.IFKEYWORD,
+    "else": TokenType.ELSEKEYWORD,
 }
 
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [
@@ -110,16 +109,15 @@ class Lexer:
             [Token(LITKEYWORD, 'true'), Token(IDENTIFIER, '_or_not')]
 
         This is an error, and the reason why we match everything as an
-        identifier, and treat keywords as special case of identifiers.
+        identifier, and treat keywords as a special case of identifiers.
 
         Everything is an identifier, unless it happens to be a keyword.
         This works because keywords match the identifier pattern regex.
         """
-        if value in DECL_KEYWORDS:
-            return TokenType.DECLKEYWORD
-        if value in LITERAL_KEYWORDS:
-            return TokenType.LITKEYWORD
-        return TokenType.IDENTIFIER
+        try:
+            return KEYWORDS[value]
+        except KeyError:
+            return TokenType.IDENTIFIER
 
     def _consume_match(self, token_type: TokenType, value: str) -> Token:
         """Extract token from script and advance playhead."""

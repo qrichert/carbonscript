@@ -4,6 +4,8 @@ import enum
 class TokenType(enum.Enum):
     DECLKEYWORD = "DECLKEYWORD"  # var, const
     LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
+    IFKEYWORD = "IFKEYWORD"  # if
+    ELSEKEYWORD = "ELSEKEYWORD"  # else
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
     STRING = "STRING"  # "hello, world"

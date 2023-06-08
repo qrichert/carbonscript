@@ -9,6 +9,7 @@ from .ast import (
     Expr,
     ExprStmt,
     Group,
+    IfStmt,
     Literal,
     Stmt,
     Unary,
@@ -273,16 +274,71 @@ class Parser:
         """Parse statement.
 
         stmt → expr_stmt
+             | if_stmt
              | block
         """
+        if self._consume_token_if_matches(TokenType.IFKEYWORD):
+            return self._parse_if_stmt()
         if block := self._parse_block():
             return block
         return self._parse_expr_stmt()
 
+    # TODO: Test errors.
+    def _parse_if_stmt(self) -> IfStmt:
+        """Parse if statement.
+
+        if_stmt → "if" "(" expr ")" "\n" block
+                  ( "else" ( if_stmt | "\n" block ) )?
+        """
+        if not self._consume_token_if_matches(TokenType.LPAREN):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "missing opening parenthesis",
+                self._current(),
+            )
+        condition: Expr = self._parse_expr()
+        if not self._consume_token_if_matches(TokenType.RPAREN):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "missing closing parenthesis",
+                self._current(),
+            )
+        if not self._consume_token_if_matches(TokenType.NEWLINE):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected newline after 'if' statement",
+                self._current(),
+            )
+        then: Block
+        if not (then := self._parse_block()):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected block after 'if' statement",
+                self._current(),
+            )
+        else_: Block | IfStmt | None = None
+        if self._consume_token_if_matches(TokenType.ELSEKEYWORD):
+            if self._consume_token_if_matches(TokenType.IFKEYWORD):
+                else_ = self._parse_if_stmt()
+            else:
+                if not self._consume_token_if_matches(TokenType.NEWLINE):
+                    raise ParseError(
+                        ErrorType.SYNTAX,
+                        "expected newline after 'else' statement",
+                        self._current(),
+                    )
+                if not (else_ := self._parse_block()):
+                    raise ParseError(
+                        ErrorType.SYNTAX,
+                        "expected block after 'else' statement",
+                        self._current(),
+                    )
+        return IfStmt(condition, then, else_)
+
     def _parse_block(self) -> Block | None:
         """Parse block.
 
-        block → INDENT declaration+ UNINDENT
+        block → INDENT declaration+ DEDENT
         """
         if self._consume_token_if_matches(TokenType.INDENT):
             statements: list[Stmt] = []
@@ -344,9 +400,13 @@ class Parser:
         # "expr" is the lvalue of an assignment, if followed by "=".
         if self._consume_token_if_matches(TokenType.EQUAL):
             if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
+                help_text: str = ""
+                if isinstance(expr, Unary):
+                    help_text = "did you forget parentheses around unary expression?"
+                help_text = f" ({help_text})" if help_text else ""
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    "assignment target is not an identifier",
+                    f"assignment target is not an identifier{help_text}",
                     self._previous(),  # "=" sign.
                 )
             lidentifier: Literal = expr
@@ -518,7 +578,7 @@ class Parser:
             if not expr or not rparen:
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    f"unterminated group expression, missing {')'!r}",
+                    f"unterminated group expression, missing ')'",
                     self._previous(),
                 )
             return Group(expr)

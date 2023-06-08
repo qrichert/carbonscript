@@ -57,7 +57,7 @@ const chained_assign = chained_1 = chained_2 = 9
 var foo = 42
 var bar = 3
 
-# TODO: if (true)
+if (true)
 # TODO:    print(foo)  # 42
 # TODO:    print(bar)  # 3
 
@@ -71,6 +71,27 @@ var bar = 3
 # TODO: print(bar)  # 3
 # print(baz)  # Error, out of scope.
 
+
+## Arbitrary blocks are valid syntax. They can be useful in scientific
+   computations with many intermediate/temporary values. ##
+
+    var some_temporary_variable = 1 / (foo * bar)
+    # *use "some_temporary_variable".*
+    # Will be out of scope on the next line (block exit).
+
+
+var test_cond_a = 0
+var test_cond_b = true
+
+if ((test_cond_b = false) == true)
+    test_cond_a = 7
+else if (false)
+    test_cond_a = 9
+else
+    test_cond_a = 42
+
+# TODO: print(test_cond_a)  # 42
+# TODO: print(test_cond_b)  # false
 
 ##
 func hello()

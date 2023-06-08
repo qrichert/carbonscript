@@ -12,6 +12,7 @@ from carbonscript.ast import (
     Expr,
     ExprStmt,
     Group,
+    IfStmt,
     Literal,
     Unary,
     VarDecl,
@@ -100,6 +101,43 @@ class TestASTNodes(unittest.TestCase):
     def test_str_group(self) -> None:
         expr = Group(Literal(TokenType.NUMBER, "42"))
         self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_if_stmt(self) -> None:
+        if_stmt = IfStmt(
+            Literal(TokenType.LITKEYWORD, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
+            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "false"))]),
+        )
+        self.assertEqual(
+            repr(if_stmt),
+            (
+                "IfStmt(Cond(Literal(LITKEYWORD, 'true')), "
+                "Then(Block(ExprStmt(Literal(LITKEYWORD, 'true')))), "
+                "Else(Block(ExprStmt(Literal(LITKEYWORD, 'false')))))"
+            ),
+        )
+
+    def test_repr_if_stmt_no_else(self) -> None:
+        if_stmt = IfStmt(
+            Literal(TokenType.LITKEYWORD, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
+            None,
+        )
+        self.assertEqual(
+            repr(if_stmt),
+            (
+                "IfStmt(Cond(Literal(LITKEYWORD, 'true')), "
+                "Then(Block(ExprStmt(Literal(LITKEYWORD, 'true')))))"
+            ),
+        )
+
+    def test_str_if_stmt(self) -> None:
+        if_stmt = IfStmt(
+            Literal(TokenType.LITKEYWORD, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
+            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "false"))]),
+        )
+        self.assertEqual(str(if_stmt), repr(if_stmt))
 
     def test_repr_var_decl(self) -> None:
         decl = VarDecl(

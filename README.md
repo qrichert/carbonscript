@@ -47,9 +47,9 @@ Double quotes can be escaped:
 - `+` Plus
 - `-` Minus
 
-## Parenthesis
+## Parentheses
 
-Parenthesis can be used to change the precedence of expressions:
+Parentheses can be used to change the precedence of expressions:
 `1 + 2 * 3 = 7`, but `(1 + 2) * 3 = 9`.
 
 ## Operator Precedence and Associativity
@@ -113,7 +113,7 @@ if (true)
     foo = 108  # Mutate "foo".
     var bar = 7  # Redefine "bar".
 
-    var baz = 1.618  # Declare "baz"
+    var baz = 1.618  # Declare "baz".
     # var baz = 123.0  # Error, redefinition of "baz".
 
 print(foo)  # 108
@@ -134,7 +134,7 @@ if (true) {
     foo = 108; // Mutate "foo".
     int bar = 7; // Redefine "bar".
 
-    float baz = 1.618; // Declare "baz"
+    float baz = 1.618; // Declare "baz".
     // float baz = 123.0; // Error, redefinition of "baz".
 }
 
@@ -151,12 +151,15 @@ program     → declaration* EOF
 
 declaration → var_decl
             | stmt
-var_decl    → ("var" | "const") IDENTIFIER "=" expr "\n"
+var_decl    → ( "var" | "const" ) IDENTIFIER "=" expr "\n"
 
 
 stmt        → expr_stmt
+            | if_stmt
             | block
 expr_stmt   → expr "\n"
+if_stmt     → "if" "(" expr ")" "\n" block
+              ( "else" ( if_stmt | "\n" block ) )?
 block       → INDENT declaration+ DEDENT
 
 

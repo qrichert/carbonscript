@@ -4,7 +4,7 @@ import doctest
 import unittest
 
 import carbonscript.lexer
-from carbonscript.lexer import DECL_KEYWORDS, LITERAL_KEYWORDS, PATTERNS, Lexer
+from carbonscript.lexer import KEYWORDS, PATTERNS, Lexer
 from carbonscript.tokens import Token, TokenType
 
 
@@ -22,14 +22,6 @@ def lex_script(script: str) -> list[Token]:
 
 
 class TestPatterns(unittest.TestCase):
-    def test_token_types_are_unique(self) -> None:
-        types: list[str] = [x.name for x in TokenType]
-        self.assertEqual(len(types), len(set(types)))
-
-    def test_no_overlap_among_keywords(self) -> None:
-        intersection: set = set.intersection(DECL_KEYWORDS, LITERAL_KEYWORDS)
-        self.assertEqual(len(intersection), 0)
-
     def test_patterns_match_type(self) -> None:
         """Ensure every TokenType has a matching PATTERN.
 
@@ -46,8 +38,7 @@ class TestPatterns(unittest.TestCase):
             for x in TokenType
             if x
             not in (
-                TokenType.DECLKEYWORD,
-                TokenType.LITKEYWORD,
+                *KEYWORDS.values(),
                 TokenType.INDENT,
                 TokenType.DEDENT,
                 TokenType.UNKNOWN,
@@ -63,8 +54,7 @@ class TestLexer(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.script_using_all_tokens: str = (
             'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= = ° '
-            + " ".join(DECL_KEYWORDS)
-            + " ".join(LITERAL_KEYWORDS)
+            + " ".join(KEYWORDS)
             + "##ml comment##\n# sl comment"
         )
         cls._assert_script_uses_all_available_types(cls.script_using_all_tokens)
@@ -129,11 +119,11 @@ class TestLexer(unittest.TestCase):
                 f"{token}.column != Expected{expected_token}.column",
             )
 
-    def test_token_literal_keywords(self) -> None:
-        tokens: list[Token] = lex_script(" ".join(LITERAL_KEYWORDS) + " ")
+    def test_token_keywords(self) -> None:
+        tokens: list[Token] = lex_script(" ".join(KEYWORDS) + " ")
         expected: list[Token] = []
-        for kw in LITERAL_KEYWORDS:
-            expected.append(Token(TokenType.LITKEYWORD, kw))
+        for keyword, token_type in KEYWORDS.items():
+            expected.append(Token(token_type, keyword))
             expected.append(Token(TokenType.WHITESPACE, " "))
         expected.append(Token(TokenType.EOF))
         self.assertListEqual(tokens, expected)
@@ -236,7 +226,7 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
-    def test_token_keyword(self) -> None:
+    def test_token_declaration_keyword(self) -> None:
         tokens: list[Token] = lex_script("var const")
         self.assertListEqual(
             tokens,
@@ -248,7 +238,7 @@ class TestLexer(unittest.TestCase):
             ],
         )
 
-    def test_literal_keyword(self) -> None:
+    def test_token_literal_keyword(self) -> None:
         tokens: list[Token] = lex_script("true false")
         self.assertListEqual(
             tokens,
@@ -256,6 +246,18 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.LITKEYWORD, "true"),
                 Token(TokenType.WHITESPACE, " "),
                 Token(TokenType.LITKEYWORD, "false"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_if_else(self) -> None:
+        tokens: list[Token] = lex_script("if else")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.IFKEYWORD, "if"),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.ELSEKEYWORD, "else"),
                 Token(TokenType.EOF),
             ],
         )

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Union
 
 from .tokens import TokenType
+from .values import LiteralValue
 
 
 @dataclass(repr=False)
@@ -50,7 +52,7 @@ class Literal(Expr):
     """Number, String, boolean, null, identifier. (e.g., `108`)."""
 
     literal: TokenType
-    value: Union[Decimal, str, bool, None]
+    value: LiteralValue
 
     def __repr__(self) -> str:
         class_name: str = self.__class__.__name__
@@ -109,6 +111,22 @@ class Block:
         return f"{class_name}({stmts})"
 
 
+@dataclass
+class IfStmt(Stmt):
+    """If statement."""
+
+    condition: Expr
+    then: Block
+    else_: Block | IfStmt | None
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        condition: str = "Cond(" + repr(self.condition) + ")"
+        then: str = "Then(" + repr(self.then) + ")"
+        else_: str = "Else(" + repr(self.else_) + ")" if self.else_ else ""
+        return f"{class_name}({condition}, {then}{', ' + else_ if else_ else ''})"
+
+
 @dataclass(repr=False)
 class Declaration(Stmt):
     """Declaration."""
@@ -126,7 +144,7 @@ class VarDecl(Declaration):
         return f"{class_name}({self.lidentifier}, {self.rexpr!r})"
 
 
-@dataclass()
+@dataclass
 class ConstDecl(VarDecl):
     """Constant declaration"""
 

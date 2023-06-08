@@ -300,6 +300,65 @@ class TestScope(unittest.TestCase):
             )
 
 
+class TestControlFlow(unittest.TestCase):
+    def test_if_then(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                if (true)
+                    foo = 1.618
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("1.618"), False),
+            },
+        )
+
+    def test_if_then_else(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                if (false)
+                    foo = -1
+                else
+                    foo = 1.618
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("1.618"), False),
+            },
+        )
+
+    def test_if_then_else_if_else(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                if (false)
+                    foo = -1
+                else if (true)
+                    foo = 1.618
+                else
+                    foo = 0
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("1.618"), False),
+            },
+        )
+
+
 class TestTheBigOne(unittest.TestCase):
     def test_the_big_one(self) -> None:
         with open(THE_BIG_ONE) as f:
@@ -340,6 +399,8 @@ class TestTheBigOne(unittest.TestCase):
                 "chained_assign": (D("9"), True),
                 "foo": (D("108"), False),
                 "bar": (D("3"), False),
+                "test_cond_a": (D("42"), False),
+                "test_cond_b": (False, False),
             },
         )
 

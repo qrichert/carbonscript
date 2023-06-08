@@ -6,6 +6,7 @@ from .ast import (
     Expr,
     ExprStmt,
     Group,
+    IfStmt,
     Literal,
     Stmt,
     Unary,
@@ -40,6 +41,8 @@ class Interpreter:
     def _interpret_declaration(self, stmt: Stmt) -> LiteralValue | None:
         if isinstance(stmt, ExprStmt):
             return self._interpret_expr_stmt(stmt)
+        if isinstance(stmt, IfStmt):
+            return self._interpret_if_stmt(stmt)
         if isinstance(stmt, Block):
             return self._interpret_block(stmt)
         if isinstance(stmt, VarDecl):
@@ -50,6 +53,17 @@ class Interpreter:
 
     def _interpret_expr_stmt(self, stmt: ExprStmt) -> LiteralValue:
         return self._interpret_expr(stmt.expression)
+
+    def _interpret_if_stmt(self, stmt: IfStmt) -> None:
+        # TODO: is_truthy, or bool on class
+        condition: bool = bool(self._interpret_expr(stmt.condition))
+        if condition:
+            return self._interpret_block(stmt.then)
+        elif isinstance(stmt.else_, IfStmt):
+            return self._interpret_if_stmt(stmt.else_)
+        elif isinstance(stmt.else_, Block):
+            return self._interpret_block(stmt.else_)
+        return None
 
     def _interpret_block(self, block: Block) -> None:
         self.env.push_scope()

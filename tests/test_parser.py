@@ -13,6 +13,7 @@ from carbonscript.ast import (
     Expr,
     ExprStmt,
     Group,
+    IfStmt,
     Literal,
     Stmt,
     Unary,
@@ -254,26 +255,23 @@ class TestParser(unittest.TestCase):
             parse_script("fake_stmt\n\tvar i = 42")
         self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "\t"))
 
-    # def test_first_statement_cannot_be_indented(self) -> None:
-    #     with self.assertRaises(ParseError) as ctx:
-    #         parse_script("    var i = 42")
-    #     self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
-
-    # TODO: replace fake_stmt with an `if (true)` block.
-    def test_indent_must_be_a_multiple_of_four_spaces(self) -> None:
-        with self.assertRaises(ParseError) as ctx:
-            parse_script("fake_stmt\n   var i = 42")
-        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "   "))
-
-        with self.assertRaises(ParseError) as ctx:
-            parse_script("fake_stmt\n     var i = 42")
-        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "     "))
-
-        self.assertEqual(
-            parse_script("fake_stmt\n    var i = 42"),
+    def test_block(self) -> None:
+        self.assertListEqual(
+            parse_script("if (true)\n    foo\nbar"),
             [
-                # TODO: Should become a Block once we've got "if".
-                ExprStmt(Literal(TokenType.IDENTIFIER, "fake_stmt")),
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block([ExprStmt(Literal(TokenType.IDENTIFIER, "foo"))]),
+                    None,
+                ),
+                ExprStmt(Literal(TokenType.IDENTIFIER, "bar")),
+            ],
+        )
+
+    def test_first_statement_can_be_indented(self) -> None:
+        self.assertEqual(
+            parse_script("    var i = 42"),
+            [
                 Block(
                     [
                         VarDecl(
@@ -281,42 +279,41 @@ class TestParser(unittest.TestCase):
                             Literal(TokenType.NUMBER, D("42")),
                         )
                     ]
+                )
+            ],
+        )
+
+    def test_indent_must_be_a_multiple_of_four_spaces(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\n   var i = 42")
+        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "   "))
+
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\n     var i = 42")
+        self.assertEqual(ctx.exception.token, Token(TokenType.WHITESPACE, "     "))
+
+        self.assertEqual(
+            parse_script("if (true)\n    var i = 42"),
+            [
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block(
+                        [
+                            VarDecl(
+                                Literal(TokenType.IDENTIFIER, "i"),
+                                Literal(TokenType.NUMBER, D("42")),
+                            )
+                        ]
+                    ),
+                    None,
                 ),
             ],
         )
 
-    # def test_indent_level_0(self) -> None:
-    #     parser = parse_script_and_return_parser("const foo = bar")
-    #     self.assertEqual(parser._current_indent, 0)
-    #     self.assertEqual(parser._previous_indent, 0)
-
-    # def test_indent_level_1(self) -> None:
-    #     parser = parse_script_and_return_parser("fake_stmt\n    const foo = bar")
-    #     self.assertEqual(parser._current_indent, 1)
-    #     self.assertEqual(parser._previous_indent, 0)
-
-    # TODO must implement if(), real block stmt for it to work
-    # def test_indent_level_2(self) -> None:
-    #     parser = parse_script_and_return_parser(
-    #         "fake_stmt\n    fake_stmt\n        const foo = bar"
-    #     )
-    #     self.assertEqual(parser._current_indent, 2)
-    #     self.assertEqual(parser._previous_indent, 1)
-
-    # def test_cannot_indent_multiple_blocks_at_once(self) -> None:
-    #     with self.assertRaises(ParseError) as ctx:
-    #         parse_script_and_return_parser("fake_stmt\n        const foo = bar")
-    #     self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "const"))
-
-    # def test_block(self) -> None:
-    #     self.assertListEqual(
-    #         parse_script("fake_stmt\n    fake_stmt"),
-    #         [
-    #             ExprStmt(Literal(TokenType.STRING, "hello, world\n")),
-    #             ExprStmt(Literal(TokenType.STRING, "123")),
-    #             ExprStmt(Literal(TokenType.STRING, "abc")),
-    #         ],
-    #     )
+    def test_cannot_indent_multiple_blocks_at_once(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\n        const foo = bar")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "const"))
 
 
 class TestStatements(unittest.TestCase):
@@ -436,6 +433,138 @@ class TestStatements(unittest.TestCase):
         with self.assertRaises(ParseError) as ctx:
             parse_script("const a = 2+2 (3+3)")
         self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
+
+    def test_if_statement_if_then(self) -> None:
+        self.assertListEqual(
+            parse_script("if (true)\n    2 + 2"),
+            [
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block(
+                        [
+                            ExprStmt(
+                                BinOp(
+                                    Literal(TokenType.NUMBER, D("2")),
+                                    TokenType.PLUS,
+                                    Literal(TokenType.NUMBER, D("2")),
+                                )
+                            ),
+                        ]
+                    ),
+                    None,
+                )
+            ],
+        )
+
+    def test_if_statement_if_then_else(self) -> None:
+        self.assertListEqual(
+            parse_script("if (true)\n    2 + 2\nelse\n    4 + 4"),
+            [
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block(
+                        [
+                            ExprStmt(
+                                BinOp(
+                                    Literal(TokenType.NUMBER, D("2")),
+                                    TokenType.PLUS,
+                                    Literal(TokenType.NUMBER, D("2")),
+                                )
+                            ),
+                        ]
+                    ),
+                    Block(
+                        [
+                            ExprStmt(
+                                BinOp(
+                                    Literal(TokenType.NUMBER, D("4")),
+                                    TokenType.PLUS,
+                                    Literal(TokenType.NUMBER, D("4")),
+                                )
+                            ),
+                        ]
+                    ),
+                )
+            ],
+        )
+
+    def test_if_statement_if_then_else_if_else(self) -> None:
+        self.assertListEqual(
+            parse_script(
+                "if (true)\n    2 + 2\nelse if (false)\n    3 + 3\nelse\n    4 + 4"
+            ),
+            [
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block(
+                        [
+                            ExprStmt(
+                                BinOp(
+                                    Literal(TokenType.NUMBER, D("2")),
+                                    TokenType.PLUS,
+                                    Literal(TokenType.NUMBER, D("2")),
+                                )
+                            ),
+                        ]
+                    ),
+                    IfStmt(
+                        Literal(TokenType.LITKEYWORD, False),
+                        Block(
+                            [
+                                ExprStmt(
+                                    BinOp(
+                                        Literal(TokenType.NUMBER, D("3")),
+                                        TokenType.PLUS,
+                                        Literal(TokenType.NUMBER, D("3")),
+                                    )
+                                ),
+                            ]
+                        ),
+                        Block(
+                            [
+                                ExprStmt(
+                                    BinOp(
+                                        Literal(TokenType.NUMBER, D("4")),
+                                        TokenType.PLUS,
+                                        Literal(TokenType.NUMBER, D("4")),
+                                    )
+                                ),
+                            ]
+                        ),
+                    ),
+                )
+            ],
+        )
+
+    def test_if_statement_nested(self) -> None:
+        self.assertListEqual(
+            parse_script(
+                "if (true)\n    if (false)\n        foo\n    else\n        bar"
+            ),
+            [
+                IfStmt(
+                    Literal(TokenType.LITKEYWORD, True),
+                    Block(
+                        [
+                            IfStmt(
+                                Literal(TokenType.LITKEYWORD, False),
+                                Block(
+                                    [
+                                        ExprStmt(Literal(TokenType.IDENTIFIER, "foo")),
+                                    ]
+                                ),
+                                Block(
+                                    [
+                                        ExprStmt(Literal(TokenType.IDENTIFIER, "bar")),
+                                    ]
+                                ),
+                            )
+                        ]
+                    ),
+                    None,
+                ),
+            ],
+        )
 
 
 class TestLiterals(unittest.TestCase):

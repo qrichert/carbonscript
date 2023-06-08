@@ -16,6 +16,12 @@ def load_tests(
     return tests
 
 
+class TestTokenType(unittest.TestCase):
+    def test_token_types_are_unique(self) -> None:
+        types: list[str] = [x.name for x in TokenType]
+        self.assertEqual(len(types), len(set(types)))
+
+
 class TestToken(unittest.TestCase):
     def test_equality_equal(self) -> None:
         token1 = Token(TokenType.NUMBER, "123")
