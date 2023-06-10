@@ -9,7 +9,9 @@ from carbonscript.ast import (
     Assign,
     BinOp,
     Block,
+    BreakStmt,
     ConstDecl,
+    ContinueStmt,
     Expr,
     ExprStmt,
     Group,
@@ -18,6 +20,7 @@ from carbonscript.ast import (
     Stmt,
     Unary,
     VarDecl,
+    WhileStmt,
 )
 from carbonscript.error import ParseError
 from carbonscript.lexer import Lexer
@@ -260,7 +263,7 @@ class TestParser(unittest.TestCase):
             parse_script("if (true)\n    foo\nbar"),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block([ExprStmt(Literal(TokenType.IDENTIFIER, "foo"))]),
                     None,
                 ),
@@ -296,7 +299,7 @@ class TestParser(unittest.TestCase):
             parse_script("if (true)\n    var i = 42"),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block(
                         [
                             VarDecl(
@@ -313,7 +316,7 @@ class TestParser(unittest.TestCase):
     def test_cannot_indent_multiple_blocks_at_once(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("if (true)\n        const foo = bar")
-        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "const"))
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "const"))
 
 
 class TestStatements(unittest.TestCase):
@@ -427,19 +430,19 @@ class TestStatements(unittest.TestCase):
     def test_declaration_multiple_declarations_on_single_line(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("const a = 2+2 var b = 3+3")
-        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKEYWORD, "var"))
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "var"))
 
     def test_declaration_assigning_multiple_expressions(self) -> None:
         with self.assertRaises(ParseError) as ctx:
             parse_script("const a = 2+2 (3+3)")
         self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
 
-    def test_if_statement_if_then(self) -> None:
+    def test_if_stmt_if_then(self) -> None:
         self.assertListEqual(
             parse_script("if (true)\n    2 + 2"),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block(
                         [
                             ExprStmt(
@@ -456,12 +459,12 @@ class TestStatements(unittest.TestCase):
             ],
         )
 
-    def test_if_statement_if_then_else(self) -> None:
+    def test_if_stmt_if_then_else(self) -> None:
         self.assertListEqual(
             parse_script("if (true)\n    2 + 2\nelse\n    4 + 4"),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block(
                         [
                             ExprStmt(
@@ -488,14 +491,14 @@ class TestStatements(unittest.TestCase):
             ],
         )
 
-    def test_if_statement_if_then_else_if_else(self) -> None:
+    def test_if_stmt_if_then_else_if_else(self) -> None:
         self.assertListEqual(
             parse_script(
                 "if (true)\n    2 + 2\nelse if (false)\n    3 + 3\nelse\n    4 + 4"
             ),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block(
                         [
                             ExprStmt(
@@ -508,7 +511,7 @@ class TestStatements(unittest.TestCase):
                         ]
                     ),
                     IfStmt(
-                        Literal(TokenType.LITKEYWORD, False),
+                        Literal(TokenType.LITKW, False),
                         Block(
                             [
                                 ExprStmt(
@@ -536,18 +539,18 @@ class TestStatements(unittest.TestCase):
             ],
         )
 
-    def test_if_statement_nested(self) -> None:
+    def test_if_stmt_nested(self) -> None:
         self.assertListEqual(
             parse_script(
                 "if (true)\n    if (false)\n        foo\n    else\n        bar"
             ),
             [
                 IfStmt(
-                    Literal(TokenType.LITKEYWORD, True),
+                    Literal(TokenType.LITKW, True),
                     Block(
                         [
                             IfStmt(
-                                Literal(TokenType.LITKEYWORD, False),
+                                Literal(TokenType.LITKW, False),
                                 Block(
                                     [
                                         ExprStmt(Literal(TokenType.IDENTIFIER, "foo")),
@@ -565,6 +568,109 @@ class TestStatements(unittest.TestCase):
                 ),
             ],
         )
+
+    def test_if_stmt_missing_opening_parenthesis(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if true)\n    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.LITKW, "true"))
+
+    def test_if_stmt_missing_closing_parenthesis(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true\n    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE, "\n"))
+
+    def test_if_stmt_missing_newline(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "const"))
+
+    def test_if_stmt_missing_block(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\nconst foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "const"))
+
+    def test_if_stmt_missing_newline_after_else(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\n    const foo = 1\nelse    var foo = 2")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "var"))
+
+    def test_if_stmt_missing_block_after_else(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("if (true)\n    const foo = 1\nelse\nvar foo = 2")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "var"))
+
+    def test_while_stmt(self) -> None:
+        self.assertListEqual(
+            parse_script("while (true)\n    bar"),
+            [
+                WhileStmt(
+                    Literal(TokenType.LITKW, True),
+                    Block([ExprStmt(Literal(TokenType.IDENTIFIER, "bar"))]),
+                )
+            ],
+        )
+
+    def test_while_stmt_missing_opening_parenthesis(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while true)\n    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.LITKW, "true"))
+
+    def test_while_stmt_missing_closing_parenthesis(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while (true\n    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE, "\n"))
+
+    def test_while_stmt_missing_newline(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while (true)    const foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "const"))
+
+    def test_while_stmt_missing_block(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while (true)\nconst foo = 1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DECLKW, "const"))
+
+    def test_break_stmt(self) -> None:
+        self.assertListEqual(
+            parse_script("while (true)\n    break"),
+            [
+                WhileStmt(
+                    Literal(TokenType.LITKW, True),
+                    Block([BreakStmt()]),
+                )
+            ],
+        )
+
+    def test_break_stmt_outside_of_loop(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("break")
+        self.assertEqual(ctx.exception.token, Token(TokenType.BREAK, "break"))
+
+    def test_break_stmt_missing_newline(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while (true)\n    break foo")
+        self.assertEqual(ctx.exception.token, Token(TokenType.IDENTIFIER, "foo"))
+
+    def test_continue_stmt(self) -> None:
+        self.assertListEqual(
+            parse_script("while (true)\n    continue"),
+            [
+                WhileStmt(
+                    Literal(TokenType.LITKW, True),
+                    Block([ContinueStmt()]),
+                )
+            ],
+        )
+
+    def test_continue_stmt_outside_of_loop(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("continue")
+        self.assertEqual(ctx.exception.token, Token(TokenType.CONTINUE, "continue"))
+
+    def test_continue_stmt_missing_newline(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_script("while (true)\n    continue foo")
+        self.assertEqual(ctx.exception.token, Token(TokenType.IDENTIFIER, "foo"))
 
 
 class TestLiterals(unittest.TestCase):
@@ -622,19 +728,19 @@ class TestLiterals(unittest.TestCase):
     def test_literal_keyword_true(self) -> None:
         self.assertEqual(
             parse_expression("true"),
-            Literal(TokenType.LITKEYWORD, True),
+            Literal(TokenType.LITKW, True),
         )
 
     def test_literal_keyword_false(self) -> None:
         self.assertEqual(
             parse_expression("false"),
-            Literal(TokenType.LITKEYWORD, False),
+            Literal(TokenType.LITKW, False),
         )
 
     def test_literal_keyword_null(self) -> None:
         self.assertEqual(
             parse_expression("null"),
-            Literal(TokenType.LITKEYWORD, None),
+            Literal(TokenType.LITKW, None),
         )
 
 

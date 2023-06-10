@@ -358,6 +358,87 @@ class TestControlFlow(unittest.TestCase):
             },
         )
 
+    def test_while(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                while (foo > 30)
+                    foo = foo - 1
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("30"), False),
+            },
+        )
+
+    def test_while_break(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                while (true)
+                    foo = foo - 1
+                    if (foo == 30)
+                        break
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("30"), False),
+            },
+        )
+
+    def test_while_continue(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 42
+                while (true)
+                    foo = foo - 1
+                    if (foo > 30)
+                        continue
+                    break
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("30"), False),
+            },
+        )
+
+    def test_nested_while_break_continue(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var while_counter = 0
+                while (true)
+                    while (true)
+                        while_counter = while_counter + 1
+                        if (while_counter == 2)
+                            while_counter = 3
+                            continue
+                        if (while_counter >= 3)
+                            break
+                    while_counter = -while_counter
+                    break
+                """
+            )
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "while_counter": (D("-4"), False),
+            },
+        )
+
 
 class TestTheBigOne(unittest.TestCase):
     def test_the_big_one(self) -> None:
@@ -401,6 +482,7 @@ class TestTheBigOne(unittest.TestCase):
                 "bar": (D("3"), False),
                 "test_cond_a": (D("42"), False),
                 "test_cond_b": (False, False),
+                "while_counter": (D("-4"), False),
             },
         )
 

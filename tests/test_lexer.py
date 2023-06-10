@@ -231,9 +231,9 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.DECLKEYWORD, "var"),
+                Token(TokenType.DECLKW, "var"),
                 Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.DECLKEYWORD, "const"),
+                Token(TokenType.DECLKW, "const"),
                 Token(TokenType.EOF),
             ],
         )
@@ -243,9 +243,9 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.LITKEYWORD, "true"),
+                Token(TokenType.LITKW, "true"),
                 Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.LITKEYWORD, "false"),
+                Token(TokenType.LITKW, "false"),
                 Token(TokenType.EOF),
             ],
         )
@@ -255,9 +255,9 @@ class TestLexer(unittest.TestCase):
         self.assertListEqual(
             tokens,
             [
-                Token(TokenType.IFKEYWORD, "if"),
+                Token(TokenType.IF, "if"),
                 Token(TokenType.WHITESPACE, " "),
-                Token(TokenType.ELSEKEYWORD, "else"),
+                Token(TokenType.ELSE, "else"),
                 Token(TokenType.EOF),
             ],
         )

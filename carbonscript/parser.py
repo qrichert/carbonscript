@@ -4,7 +4,9 @@ from .ast import (
     Assign,
     BinOp,
     Block,
+    BreakStmt,
     ConstDecl,
+    ContinueStmt,
     Declaration,
     Expr,
     ExprStmt,
@@ -14,6 +16,7 @@ from .ast import (
     Stmt,
     Unary,
     VarDecl,
+    WhileStmt,
 )
 from .error import ErrorType, ParseError
 from .tokens import Token, TokenType
@@ -215,6 +218,7 @@ class Parser:
         self._tokens: list[Token] = []
         self.statements: list[Stmt] = []
         self._pos: int = 0
+        self._loop_depth: int = 0
 
     def parse(self, tokens: list[Token]) -> list[Stmt]:
         """Parse program.
@@ -237,7 +241,7 @@ class Parser:
         declaration → var_decl
                     | stmt
         """
-        if self._consume_token_if_matches(TokenType.DECLKEYWORD):
+        if self._consume_token_if_matches(TokenType.DECLKW):
             match self._previous().value:
                 case "var":
                     return self._parse_var_decl()
@@ -275,15 +279,23 @@ class Parser:
 
         stmt → expr_stmt
              | if_stmt
+             | while_stmt
+             | break_stmt
+             | continue_stmt
              | block
         """
-        if self._consume_token_if_matches(TokenType.IFKEYWORD):
+        if self._consume_token_if_matches(TokenType.IF):
             return self._parse_if_stmt()
+        if self._consume_token_if_matches(TokenType.WHILE):
+            return self._parse_while_stmt()
+        if self._consume_token_if_matches(TokenType.BREAK):
+            return self._parse_break_stmt()
+        if self._consume_token_if_matches(TokenType.CONTINUE):
+            return self._parse_continue_stmt()
         if block := self._parse_block():
             return block
         return self._parse_expr_stmt()
 
-    # TODO: Test errors.
     def _parse_if_stmt(self) -> IfStmt:
         """Parse if statement.
 
@@ -317,8 +329,8 @@ class Parser:
                 self._current(),
             )
         else_: Block | IfStmt | None = None
-        if self._consume_token_if_matches(TokenType.ELSEKEYWORD):
-            if self._consume_token_if_matches(TokenType.IFKEYWORD):
+        if self._consume_token_if_matches(TokenType.ELSE):
+            if self._consume_token_if_matches(TokenType.IF):
                 else_ = self._parse_if_stmt()
             else:
                 if not self._consume_token_if_matches(TokenType.NEWLINE):
@@ -334,6 +346,87 @@ class Parser:
                         self._current(),
                     )
         return IfStmt(condition, then, else_)
+
+    def _parse_while_stmt(self) -> WhileStmt:
+        """Parse while statement.
+
+        while_stmt → "while" "(" expr ")" "\n" block
+        """
+        if not self._consume_token_if_matches(TokenType.LPAREN):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                # TODO: Factorize errors, this is not the only occurrence.
+                "missing opening parenthesis",
+                self._current(),
+            )
+        condition: Expr = self._parse_expr()
+        if not self._consume_token_if_matches(TokenType.RPAREN):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "missing closing parenthesis",
+                self._current(),
+            )
+        if not self._consume_token_if_matches(TokenType.NEWLINE):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected newline after 'while' statement",
+                self._current(),
+            )
+        body: Block
+        if not (body := self._parse_loop_block()):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected block after 'while' statement",
+                self._current(),
+            )
+        return WhileStmt(condition, body)
+
+    def _parse_loop_block(self) -> Block | None:
+        self._loop_depth += 1
+        block: Block | None = self._parse_block()
+        self._loop_depth -= 1
+        return block
+
+    def _parse_break_stmt(self) -> BreakStmt:
+        """Parse break statement.
+
+        break_stmt → "break" "\n"
+        """
+        if not self._is_in_loop():
+            raise ParseError(
+                ErrorType.SYNTAX,
+                '"break" statement outside of loop',
+                self._previous(),
+            )
+        if not self._consume_token_if_matches(TokenType.NEWLINE):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected newline after 'break' statement",
+                self._current(),
+            )
+        return BreakStmt()
+
+    def _parse_continue_stmt(self) -> ContinueStmt:
+        """Parse continue statement.
+
+        continue_stmt → "continue" "\n"
+        """
+        if not self._is_in_loop():
+            raise ParseError(
+                ErrorType.SYNTAX,
+                '"continue" statement outside of loop',
+                self._previous(),
+            )
+        if not self._consume_token_if_matches(TokenType.NEWLINE):
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "expected newline after 'continue' statement",
+                self._current(),
+            )
+        return ContinueStmt()
+
+    def _is_in_loop(self) -> bool:
+        return self._loop_depth > 0
 
     def _parse_block(self) -> Block | None:
         """Parse block.
@@ -563,7 +656,7 @@ class Parser:
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
             value: str = self._previous().value
             return Literal(TokenType.IDENTIFIER, value)
-        if literal := self._consume_token_if_matches(TokenType.LITKEYWORD):
+        if literal := self._consume_token_if_matches(TokenType.LITKW):
             match self._previous().value:
                 case "true":
                     return Literal(literal, True)

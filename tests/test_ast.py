@@ -8,7 +8,9 @@ from carbonscript.ast import (
     Assign,
     BinOp,
     Block,
+    BreakStmt,
     ConstDecl,
+    ContinueStmt,
     Expr,
     ExprStmt,
     Group,
@@ -16,6 +18,7 @@ from carbonscript.ast import (
     Literal,
     Unary,
     VarDecl,
+    WhileStmt,
 )
 from carbonscript.tokens import TokenType
 
@@ -104,40 +107,76 @@ class TestASTNodes(unittest.TestCase):
 
     def test_repr_if_stmt(self) -> None:
         if_stmt = IfStmt(
-            Literal(TokenType.LITKEYWORD, "true"),
-            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
-            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "false"))]),
+            Literal(TokenType.LITKW, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKW, "true"))]),
+            Block([ExprStmt(Literal(TokenType.LITKW, "false"))]),
         )
         self.assertEqual(
             repr(if_stmt),
             (
-                "IfStmt(Cond(Literal(LITKEYWORD, 'true')), "
-                "Then(Block(ExprStmt(Literal(LITKEYWORD, 'true')))), "
-                "Else(Block(ExprStmt(Literal(LITKEYWORD, 'false')))))"
+                "IfStmt(Cond(Literal(LITKW, 'true')), "
+                "Then(Block(ExprStmt(Literal(LITKW, 'true')))), "
+                "Else(Block(ExprStmt(Literal(LITKW, 'false')))))"
             ),
         )
 
     def test_repr_if_stmt_no_else(self) -> None:
         if_stmt = IfStmt(
-            Literal(TokenType.LITKEYWORD, "true"),
-            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
+            Literal(TokenType.LITKW, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKW, "true"))]),
             None,
         )
         self.assertEqual(
             repr(if_stmt),
             (
-                "IfStmt(Cond(Literal(LITKEYWORD, 'true')), "
-                "Then(Block(ExprStmt(Literal(LITKEYWORD, 'true')))))"
+                "IfStmt(Cond(Literal(LITKW, 'true')), "
+                "Then(Block(ExprStmt(Literal(LITKW, 'true')))))"
             ),
         )
 
     def test_str_if_stmt(self) -> None:
         if_stmt = IfStmt(
-            Literal(TokenType.LITKEYWORD, "true"),
-            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "true"))]),
-            Block([ExprStmt(Literal(TokenType.LITKEYWORD, "false"))]),
+            Literal(TokenType.LITKW, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKW, "true"))]),
+            Block([ExprStmt(Literal(TokenType.LITKW, "false"))]),
         )
         self.assertEqual(str(if_stmt), repr(if_stmt))
+
+    def test_repr_while_stmt(self) -> None:
+        while_stmt = WhileStmt(
+            Literal(TokenType.LITKW, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKW, "true"))]),
+        )
+        self.assertEqual(
+            repr(while_stmt),
+            (
+                "WhileStmt(Cond(Literal(LITKW, 'true')), "
+                "Block(ExprStmt(Literal(LITKW, 'true'))))"
+            ),
+        )
+
+    def test_str_while_stmt(self) -> None:
+        while_stmt = WhileStmt(
+            Literal(TokenType.LITKW, "true"),
+            Block([ExprStmt(Literal(TokenType.LITKW, "true"))]),
+        )
+        self.assertEqual(str(while_stmt), repr(while_stmt))
+
+    def test_repr_break_stmt(self) -> None:
+        break_stmt = BreakStmt()
+        self.assertEqual(repr(break_stmt), "BreakStmt")
+
+    def test_str_break_stmt(self) -> None:
+        break_stmt = BreakStmt()
+        self.assertEqual(str(break_stmt), repr(break_stmt))
+
+    def test_repr_continue_stmt(self) -> None:
+        continue_stmt = ContinueStmt()
+        self.assertEqual(repr(continue_stmt), "ContinueStmt")
+
+    def test_str_continue_stmt(self) -> None:
+        continue_stmt = ContinueStmt()
+        self.assertEqual(str(continue_stmt), repr(continue_stmt))
 
     def test_repr_var_decl(self) -> None:
         decl = VarDecl(

@@ -2,10 +2,13 @@ import enum
 
 
 class TokenType(enum.Enum):
-    DECLKEYWORD = "DECLKEYWORD"  # var, const
-    LITKEYWORD = "LITKEYWORD"  # true, false, null, etc.
-    IFKEYWORD = "IFKEYWORD"  # if
-    ELSEKEYWORD = "ELSEKEYWORD"  # else
+    DECLKW = "DECLKW"  # var, const
+    LITKW = "LITKW"  # true, false, null, etc.
+    IF = "IF"  # if
+    ELSE = "ELSE"  # else
+    WHILE = "WHILE"  # while
+    BREAK = "BREAK"  # break
+    CONTINUE = "CONTINUE"  # continue
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
     STRING = "STRING"  # "hello, world"

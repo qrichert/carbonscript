@@ -127,6 +127,38 @@ class IfStmt(Stmt):
         return f"{class_name}({condition}, {then}{', ' + else_ if else_ else ''})"
 
 
+@dataclass
+class WhileStmt(Stmt):
+    """While statement."""
+
+    condition: Expr
+    body: Block
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        condition: str = "Cond(" + repr(self.condition) + ")"
+        body: str = repr(self.body)
+        return f"{class_name}({condition}, {body})"
+
+
+@dataclass
+class BreakStmt(Stmt):
+    """Break statement."""
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return class_name
+
+
+@dataclass
+class ContinueStmt(Stmt):
+    """Continue statement."""
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return class_name
+
+
 @dataclass(repr=False)
 class Declaration(Stmt):
     """Declaration."""

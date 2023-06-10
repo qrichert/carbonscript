@@ -4,13 +4,16 @@ import re
 from .tokens import Token, TokenType
 
 KEYWORDS: dict[str, TokenType] = {
-    "var": TokenType.DECLKEYWORD,
-    "const": TokenType.DECLKEYWORD,
-    "true": TokenType.LITKEYWORD,
-    "false": TokenType.LITKEYWORD,
-    "null": TokenType.LITKEYWORD,
-    "if": TokenType.IFKEYWORD,
-    "else": TokenType.ELSEKEYWORD,
+    "var": TokenType.DECLKW,
+    "const": TokenType.DECLKW,
+    "true": TokenType.LITKW,
+    "false": TokenType.LITKW,
+    "null": TokenType.LITKW,
+    "if": TokenType.IF,
+    "else": TokenType.ELSE,
+    "while": TokenType.WHILE,
+    "break": TokenType.BREAK,
+    "continue": TokenType.CONTINUE,
 }
 
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [
@@ -106,7 +109,7 @@ class Lexer:
         If we handle identifiers and keywords separately, a variable
         named "true_or_not" may be matched as:
 
-            [Token(LITKEYWORD, 'true'), Token(IDENTIFIER, '_or_not')]
+            [Token(LITKW, 'true'), Token(IDENTIFIER, '_or_not')]
 
         This is an error, and the reason why we match everything as an
         identifier, and treat keywords as a special case of identifiers.

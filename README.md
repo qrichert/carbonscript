@@ -10,8 +10,8 @@ easy to pick up.
 
 ## Roadmap
 
-- `while` loops
 - Logical operators (`and`, `or`)
+- In-place operations (`+=`, `-=`, etc.)
 - Iterables (`[a, b, c]`)
 - `for` loops
 - Functions

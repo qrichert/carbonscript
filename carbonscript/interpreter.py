@@ -2,7 +2,9 @@ from .ast import (
     Assign,
     BinOp,
     Block,
+    BreakStmt,
     ConstDecl,
+    ContinueStmt,
     Expr,
     ExprStmt,
     Group,
@@ -11,10 +13,19 @@ from .ast import (
     Stmt,
     Unary,
     VarDecl,
+    WhileStmt,
 )
 from .environment import Environment
 from .tokens import TokenType
 from .values import LiteralValue
+
+
+class RequestNextLoopIteration(Exception):
+    pass
+
+
+class RequestLoopTermination(Exception):
+    pass
 
 
 class Interpreter:
@@ -43,6 +54,12 @@ class Interpreter:
             return self._interpret_expr_stmt(stmt)
         if isinstance(stmt, IfStmt):
             return self._interpret_if_stmt(stmt)
+        if isinstance(stmt, WhileStmt):
+            return self._interpret_while_stmt(stmt)
+        if isinstance(stmt, BreakStmt):
+            return self._interpret_break_stmt(stmt)
+        if isinstance(stmt, ContinueStmt):
+            return self._interpret_continue_stmt(stmt)
         if isinstance(stmt, Block):
             return self._interpret_block(stmt)
         if isinstance(stmt, VarDecl):
@@ -64,6 +81,22 @@ class Interpreter:
         elif isinstance(stmt.else_, Block):
             return self._interpret_block(stmt.else_)
         return None
+
+    def _interpret_while_stmt(self, stmt: WhileStmt) -> None:
+        while bool(self._interpret_expr(stmt.condition)):
+            try:
+                self._interpret_block(stmt.body)
+            except RequestNextLoopIteration:
+                continue
+            except RequestLoopTermination:
+                break
+        return None
+
+    def _interpret_break_stmt(self, stmt: BreakStmt) -> None:
+        raise RequestLoopTermination
+
+    def _interpret_continue_stmt(self, stmt: ContinueStmt) -> None:
+        raise RequestNextLoopIteration
 
     def _interpret_block(self, block: Block) -> None:
         self.env.push_scope()

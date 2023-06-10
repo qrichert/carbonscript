@@ -8,6 +8,8 @@
 - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
 - [Variables and Constants](#variables-and-constants)
 - [Scope](#scope)
+- [Conditions](#conditions)
+- [Loops](#loops)
 - [Comments](#comments)
 - [Complete Grammar](#complete-grammar)
 
@@ -154,6 +156,51 @@ printf("%d\n", bar); // 3
 // printf("%.3f\n", baz); // Error, out of scope.
 ```
 
+## Conditions
+
+Conditions use the `if` and `else` keywords. Like in many languages,
+`if` can feed into an `else`, to create a synthetic `else if` statement.
+The `else` part is optional.
+
+```coffee
+if (cond)
+    foo = 1
+
+if (cond)
+    foo = 1
+else
+    foo = 2
+
+if (cond)
+    foo = 1
+else if (cond)
+    foo = 1.5
+else
+    foo = 2
+```
+
+## Loops
+
+### `while` Loop
+
+The `while` loop repeats instructions as long as the expression given
+as condition evaluates is truthy. If the expression is never truthy, the
+instructions will never execute.
+
+The `contine` keyword can be used in a loop to jump to the next
+iteration. The `break` jumps out of the loop, ending it completely.
+
+```coffee
+while (cond)
+    foo = foo + 1
+
+    if (foo == 10)
+        continue  # Stop and jump to next iteration.
+
+    if (foo == 20)
+        break  # Stop and jump out of the loop.
+```
+
 ## Comments
 
 There are single line comments `# ...` and multiline comments
@@ -170,34 +217,40 @@ const foo = 1  # This one too.
 ## Complete Grammar
 
 ```
-program     → declaration* EOF
+program       → declaration* EOF
 
 
-declaration → var_decl
-            | stmt
-var_decl    → ( "var" | "const" ) IDENTIFIER "=" expr "\n"
+declaration   → var_decl
+              | stmt
+var_decl      → ( "var" | "const" ) IDENTIFIER "=" expr "\n"
 
 
-stmt        → expr_stmt
-            | if_stmt
-            | block
-expr_stmt   → expr "\n"
-if_stmt     → "if" "(" expr ")" "\n" block
-              ( "else" ( if_stmt | "\n" block ) )?
-block       → INDENT declaration+ DEDENT
+stmt          → expr_stmt
+              | if_stmt
+              | while_stmt
+              | break_stmt
+              | continue_stmt
+              | block
+expr_stmt     → expr "\n"
+if_stmt       → "if" "(" expr ")" "\n" block
+                ( "else" ( if_stmt | "\n" block ) )?
+while_stmt    → "while" "(" expr ")" "\n" block
+break_stmt    → "break" "\n"
+continue_stmt → "continue" "\n"
+block         → INDENT declaration+ DEDENT
 
 
-expr        → assignment
-assignment  → IDENTIFIER "=" assignment
-            | equality
-equality    → comparison ( ( "==" | "!=" ) comparison )*
-comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
-term        → factor ( ( "+" | "-" ) factor )*
-factor      → power ( ( "*" | "/" | "//" | "%" ) power )*
-power       → unary ( "**" power )*
-unary       → ( "+" | "-" | "!" ) unary
-            | primary
-primary     → NUMBER | STRING | BOOLEAN | NULL
-            | "(" expr ")"
-            | IDENTIFIER
+expr          → assignment
+assignment    → IDENTIFIER "=" assignment
+              | equality
+equality      → comparison ( ( "==" | "!=" ) comparison )*
+comparison    → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term          → factor ( ( "+" | "-" ) factor )*
+factor        → power ( ( "*" | "/" | "//" | "%" ) power )*
+power         → unary ( "**" power )*
+unary         → ( "+" | "-" | "!" ) unary
+              | primary
+primary       → NUMBER | STRING | BOOLEAN | NULL
+              | "(" expr ")"
+              | IDENTIFIER
 ```

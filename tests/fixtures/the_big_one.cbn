@@ -96,8 +96,22 @@ else
 ##
 func hello()
     var baz = 1
+##
 
+var while_counter = 0
 while (true)
+    while (true)
+        while_counter = while_counter + 1
+        if (while_counter == 2)
+            while_counter = 3
+            continue
+        if (while_counter >= 3)
+            break
+    while_counter = -while_counter
+    break
+
+# TODO: print(while_counter)  # -4
+##
     for (var i in [1..10:1])
         print(i)
 ##
