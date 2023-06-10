@@ -1,4 +1,4 @@
-# How is an Interpreter Made?
+# Interpreter Crash Course
 
 - [Lexing](#lexing)
 - [Parsing](#parsing)

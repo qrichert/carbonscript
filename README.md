@@ -1,179 +1,57 @@
 # CarbonScript
 
-## Identifiers
+CarbonScript is a high-level programming language.
 
-Identifiers must start with an alphabetic character (`a-zA-Z`) or the
-underscore character (`_`). This first character may be followed up by
-one or more alphabetic characters (`a-zA-Z`), numeric characters (`0-9`)
-or the underscore character (`_`).
+It is primarily designed to be embedded in applications and to face
+end-users.
 
-**Correct:**
+Being a mix of Python and C-style/JavaScripty syntax, it should be quite
+easy to pick up.
 
-- `a`
-- `abc`
-- `AbC_42`
-- `abc_42___`
-- `_abc_42`
+## Roadmap
 
-**Incorrect:**
+- `while` loops
+- Logical operators (`and`, `or`)
+- Iterables (`[a, b, c]`)
+- `for` loops
+- Functions
+- Classes
+- Resource management/Usage limits
+- Standard library.
 
-- `42abc`
+## Language Tour
 
-## Numbers
+See [Language Tour](docs/language-tour.md) for more.
 
-Numbers use correctly-rounded decimal floating-point arithmetic
-(`0.1 + 0.2 = 0.3`).
+You may also read [The Big One](tests/fixtures/the_big_one.cbn).
 
-There is only one type of number (`42` and `1.618` use the same
-underlying data structure).
-
-## Strings
-
-Strings of text are delimited by double quotes:
-
-- `"hello, world\n"`
-
-Double quotes can be escaped:
-
-- `"\"foo\""`
-
-## Arithmetic Operators
-
-- `**` Power
-- `*` Multiply
-- `//` Integer Divide
-- `/` Divide
-- `%` Modulus
-- `+` Plus
-- `-` Minus
-
-## Parentheses
-
-Parentheses can be used to change the precedence of expressions:
-`1 + 2 * 3 = 7`, but `(1 + 2) * 3 = 9`.
-
-## Operator Precedence and Associativity
-
-| precedence | name       | operator                                  | associativity |
-| ---------- | ---------- | ----------------------------------------- | ------------- |
-| 1          | assignment | `=`                                       | right         |
-| 2          | equality   | `==`, `!=`                                | left          |
-| 3          | comparison | `>`, `>=`, `<`, `<=`                      | left          |
-| 4          | term       | `+`, `-`                                  | left          |
-| 5          | factor     | `*`, `/`, `//`, `%`                       | left          |
-| 6          | power      | `**`                                      | right         |
-| 7          | unary      | `+x`, `-x`, `!x`                          | right         |
-| 8          | primary    | literals, keywords, `(`, `)`, identifiers | left          |
-
-## Variables and Constants
-
-To declare a variable or a constant, use the `var` and `const` keywords
-respectively, with the assignment operator `=`.
-
-To assign to a variable, use the assignment operator `=`, without the
-`var` keyword. Assignments can be chained. Assignment is an expression
-and has a value, which is the value of the left hand side after the
-assignment.
-
-Variables and constants have the exact same behaviour, except constants
-can only be initialized, not reassigned.
+This is how CarbonScript looks and feels like:
 
 ```coffee
-var foo = 3
-const bar = foo * 10
+print("hello, world\n")
 
-# var a  # Error, variables must be initialized.
 
-var a = 1
-a = 2  # OK.
+func hello()
+    return "hello"
 
-const b = 1
-# b = 2  # Error, constants cannot be reassigned.
 
-const c = foo = a = 42  # "c", "foo", and "a" now all equal 42.
-
-print(foo = "bar")  # Mutates "foo" and prints "bar".
-```
-
-### Scope
-
-Child scopes inherit and can mutate parent scopes. Local redefinition
-of a parent scope variable is possible by redeclaring a local variable
-with the same name. On the other hand it is not possible to redefine a
-local variable.
-
-```coffee
-var foo = 42
+const foo = 42
 var bar = 3
 
-if (true)
-    print(foo)  # 42
-    print(bar)  # 3
+if (foo > bar)
+    bar = 7
+else if (foo < bar)
+    bar = 1.618
+else
+    bar = 108
 
-    foo = 108  # Mutate "foo".
-    var bar = 7  # Redefine "bar".
 
-    var baz = 1.618  # Declare "baz".
-    # var baz = 123.0  # Error, redefinition of "baz".
-
-print(foo)  # 108
-print(bar)  # 3
-# print(baz)  # Error, out of scope.
+while (true)
+    for (var i in [1..10:1])
+        print(i)
+    break
 ```
 
-This would be equivalent to the following C code:
+## First Time Looking at Interpreter Code?
 
-```c
-int foo = 42;
-int bar = 3;
-
-if (true) {
-    printf("%d\n", foo); // 42
-    printf("%d\n", bar); // 3
-
-    foo = 108; // Mutate "foo".
-    int bar = 7; // Redefine "bar".
-
-    float baz = 1.618; // Declare "baz".
-    // float baz = 123.0; // Error, redefinition of "baz".
-}
-
-printf("%d\n", foo); // 108
-printf("%d\n", bar); // 3
-// printf("%.3f\n", baz); // Error, out of scope.
-```
-
-## Grammar
-
-```
-program     → declaration* EOF
-
-
-declaration → var_decl
-            | stmt
-var_decl    → ( "var" | "const" ) IDENTIFIER "=" expr "\n"
-
-
-stmt        → expr_stmt
-            | if_stmt
-            | block
-expr_stmt   → expr "\n"
-if_stmt     → "if" "(" expr ")" "\n" block
-              ( "else" ( if_stmt | "\n" block ) )?
-block       → INDENT declaration+ DEDENT
-
-
-expr        → assignment
-assignment  → IDENTIFIER "=" assignment
-            | equality
-equality    → comparison ( ( "==" | "!=" ) comparison )*
-comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
-term        → factor ( ( "+" | "-" ) factor )*
-factor      → power ( ( "*" | "/" | "//" | "%" ) power )*
-power       → unary ( "**" power )*
-unary       → ( "+" | "-" | "!" ) unary
-            | primary
-primary     → NUMBER | STRING | BOOLEAN | NULL
-            | "(" expr ")"
-            | IDENTIFIER
-```
+Check out the [Interpreter Crash Course](docs/interpreter-crash-course.md).
