@@ -16,6 +16,7 @@ from carbonscript.ast import (
     Group,
     IfStmt,
     Literal,
+    LogicOp,
     Unary,
     VarDecl,
     WhileStmt,
@@ -62,7 +63,26 @@ class TestASTNodes(unittest.TestCase):
         )
         self.assertEqual(str(block), repr(block))
 
-    def test_repr_binop(self) -> None:
+    def test_repr_logic_op(self) -> None:
+        expr = LogicOp(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.AND,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "LogicOp(Literal(NUMBER, '42'), AND, Literal(NUMBER, '108'))",
+        )
+
+    def test_str_logic_op(self) -> None:
+        expr = LogicOp(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.AND,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_bin_op(self) -> None:
         expr = BinOp(
             Literal(TokenType.NUMBER, "42"),
             TokenType.PLUS,
@@ -73,7 +93,7 @@ class TestASTNodes(unittest.TestCase):
             "BinOp(Literal(NUMBER, '42'), PLUS, Literal(NUMBER, '108'))",
         )
 
-    def test_str_binop(self) -> None:
+    def test_str_bin_op(self) -> None:
         expr = BinOp(
             Literal(TokenType.NUMBER, "42"),
             TokenType.PLUS,

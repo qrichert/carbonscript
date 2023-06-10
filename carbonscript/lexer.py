@@ -14,6 +14,8 @@ KEYWORDS: dict[str, TokenType] = {
     "while": TokenType.WHILE,
     "break": TokenType.BREAK,
     "continue": TokenType.CONTINUE,
+    "or": TokenType.OR,
+    "and": TokenType.AND,
 }
 
 PATTERNS: list[tuple[re.Pattern, TokenType]] = [

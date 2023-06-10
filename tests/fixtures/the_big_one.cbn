@@ -54,6 +54,13 @@ var chained_2 = null
 const chained_assign = chained_1 = chained_2 = 9
 
 
+const logic_or = true or false  # true
+const logic_and = true and false  # false
+const no_side_effects_if_short_circuit = false and (variable = 3)
+# TODO:    print(no_side_effects_if_short_circuit)  # false
+# TODO:    print(variable)  # "redefined value"
+
+
 var foo = 42
 var bar = 3
 

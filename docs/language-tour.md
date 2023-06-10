@@ -4,6 +4,7 @@
 - [Numbers](#numbers)
 - [Strings](#strings)
 - [Arithmetic Operators](#arithmetic-operators)
+- [Logic Operators](#logic-operators)
 - [Parentheses](#parentheses)
 - [Operator Precedence and Associativity](#operator-precedence-and-associativity)
 - [Variables and Constants](#variables-and-constants)
@@ -59,6 +60,14 @@ Double quotes can be escaped:
 - `+` Plus
 - `-` Minus
 
+## Logic Operators
+
+- `or` If left expression is truthy, return left, else right.
+- `and` If left expression is truthy, return right, else left.
+
+`and` has precedence over `or`. Meaning, `3 or 4 and 2` would be
+evaluated in the same order as `3 + 4 * 2`.
+
 ## Parentheses
 
 Parentheses can be used to change the precedence of expressions:
@@ -69,13 +78,15 @@ Parentheses can be used to change the precedence of expressions:
 | precedence | name       | operator                                  | associativity |
 | ---------- | ---------- | ----------------------------------------- | ------------- |
 | 1          | assignment | `=`                                       | right         |
-| 2          | equality   | `==`, `!=`                                | left          |
-| 3          | comparison | `>`, `>=`, `<`, `<=`                      | left          |
-| 4          | term       | `+`, `-`                                  | left          |
-| 5          | factor     | `*`, `/`, `//`, `%`                       | left          |
-| 6          | power      | `**`                                      | right         |
-| 7          | unary      | `+x`, `-x`, `!x`                          | right         |
-| 8          | primary    | literals, keywords, `(`, `)`, identifiers | left          |
+| 2          | logic or   | `or`                                      | left          |
+| 3          | logic and  | `and`                                     | left          |
+| 4          | equality   | `==`, `!=`                                | left          |
+| 5          | comparison | `>`, `>=`, `<`, `<=`                      | left          |
+| 6          | term       | `+`, `-`                                  | left          |
+| 7          | factor     | `*`, `/`, `//`, `%`                       | left          |
+| 8          | power      | `**`                                      | right         |
+| 9          | unary      | `+x`, `-x`, `!x`                          | right         |
+| 10         | primary    | literals, keywords, `(`, `)`, identifiers | left          |
 
 ## Variables and Constants
 

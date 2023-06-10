@@ -2,6 +2,7 @@ import enum
 
 
 class TokenType(enum.Enum):
+    # TODO[refactor]: Give each a separate TokenType (DECLKW, LITKW).
     DECLKW = "DECLKW"  # var, const
     LITKW = "LITKW"  # true, false, null, etc.
     IF = "IF"  # if
@@ -25,6 +26,8 @@ class TokenType(enum.Enum):
     GT = "GT"  # >
     LTE = "LTE"  # <=
     LT = "LT"  # <
+    OR = "OR"  # or
+    AND = "AND"  # and
     BANG = "BANG"  # !
     EQUAL = "EQUAL"  # =
     LPAREN = "LPAREN"  # (

@@ -111,6 +111,18 @@ class TestStatements(unittest.TestCase):
 
 
 class TestBasicExpressions(unittest.TestCase):
+    def test_logic_or(self) -> None:
+        self.assertEqual(interpret_as_expression("true or true"), True)
+        self.assertEqual(interpret_as_expression("false or true"), True)
+        self.assertEqual(interpret_as_expression("true or false"), True)
+        self.assertEqual(interpret_as_expression("false or false"), False)
+
+    def test_logic_and(self) -> None:
+        self.assertEqual(interpret_as_expression("true and true"), True)
+        self.assertEqual(interpret_as_expression("false and true"), False)
+        self.assertEqual(interpret_as_expression("true and false"), False)
+        self.assertEqual(interpret_as_expression("false and false"), False)
+
     def test_equality_equal_true(self) -> None:
         self.assertEqual(interpret_as_expression("3==3"), True)
 
@@ -205,6 +217,84 @@ class TestComplexExpressions(unittest.TestCase):
         self.assertAlmostEqual(
             interpret_as_expression("1+20*2*((3+1)*4+12)/3"),
             D("374.3333333"),
+        )
+
+    def test_logic_operator_precedence(self) -> None:
+        self.assertEqual(interpret_as_expression("true and true or true"), True)
+        self.assertEqual(interpret_as_expression("true and true or false"), True)
+        self.assertEqual(interpret_as_expression("true and false or true"), True)
+        self.assertEqual(interpret_as_expression("true and false or false"), False)
+        self.assertEqual(interpret_as_expression("false and true or true"), True)
+        self.assertEqual(interpret_as_expression("false and true or false"), False)
+        self.assertEqual(interpret_as_expression("false and false or true"), True)
+        self.assertEqual(interpret_as_expression("false and false or false"), False)
+
+    def test_logic_or_side_effects(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 0
+                const bar = false or (foo = 42)
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("42"), False),
+                "bar": (D("42"), True),
+            },
+        )
+
+    def test_logic_or_no_side_effects(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 0
+                const bar = true or (foo = 42)
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("0"), False),
+                "bar": (True, True),
+            },
+        )
+
+    def test_logic_and_side_effects(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 0
+                const bar = true and (foo = 42)
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("42"), False),
+                "bar": (D("42"), True),
+            },
+        )
+
+    def test_logic_and_no_side_effects(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 0
+                const bar = false and (foo = 42)
+                """
+            ),
+        )
+        self.assertDictEqual(
+            env.to_dict(),
+            {
+                "foo": (D("0"), False),
+                "bar": (False, True),
+            },
         )
 
 
@@ -478,6 +568,9 @@ class TestTheBigOne(unittest.TestCase):
                 "chained_1": (D("9"), False),
                 "chained_2": (D("9"), False),
                 "chained_assign": (D("9"), True),
+                "logic_or": (True, True),
+                "logic_and": (False, True),
+                "no_side_effects_if_short_circuit": (False, True),
                 "foo": (D("108"), False),
                 "bar": (D("3"), False),
                 "test_cond_a": (D("42"), False),

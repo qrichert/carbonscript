@@ -13,6 +13,7 @@ from .ast import (
     Group,
     IfStmt,
     Literal,
+    LogicOp,
     Stmt,
     Unary,
     VarDecl,
@@ -475,20 +476,20 @@ class Parser:
                 self._current(),
             )
 
-    def _parse_expr(self) -> Expr:
+    def _parse_expr(self) -> Expr | None:
         """Parse expression.
 
         expr → assignment
         """
         return self._parse_assignment()
 
-    def _parse_assignment(self) -> Expr:
+    def _parse_assignment(self) -> Expr | None:
         """Parse assignment.
 
         assignment → IDENTIFIER "=" assignment
-                   | equality
+                   | logic_or
         """
-        expr: Expr = self._parse_equality()
+        expr: Expr = self._parse_logic_or()
 
         # "expr" is the lvalue of an assignment, if followed by "=".
         if self._consume_token_if_matches(TokenType.EQUAL):
@@ -508,7 +509,43 @@ class Parser:
 
         return expr
 
-    def _parse_equality(self) -> Expr:
+    def _parse_logic_or(self) -> Expr | None:
+        """Parse logic or.
+
+        logic_or → logic_and ( "or" logic_and )*
+        """
+        lexpr: Expr = self._parse_logic_and()
+        operator: TokenType
+        while operator := self._consume_token_if_matches(TokenType.OR):
+            rexpr: Expr = self._parse_logic_and()
+            if not rexpr:
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "missing right part of expression",
+                    self._current(),
+                )
+            lexpr = LogicOp(lexpr, operator, rexpr)
+        return lexpr
+
+    def _parse_logic_and(self) -> Expr | None:
+        """Parse logic or.
+
+        logic_and → equality ( "and" equality )*
+        """
+        lexpr: Expr = self._parse_equality()
+        operator: TokenType
+        while operator := self._consume_token_if_matches(TokenType.AND):
+            rexpr: Expr = self._parse_equality()
+            if not rexpr:
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "missing right part of expression",
+                    self._current(),
+                )
+            lexpr = LogicOp(lexpr, operator, rexpr)
+        return lexpr
+
+    def _parse_equality(self) -> Expr | None:
         """Parse equality.
 
         equality → comparison ( ( "==" | "!=" ) comparison )*
@@ -529,7 +566,7 @@ class Parser:
             lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
-    def _parse_comparison(self) -> Expr:
+    def _parse_comparison(self) -> Expr | None:
         """Parse comparison.
 
         comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
@@ -552,7 +589,7 @@ class Parser:
             lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
-    def _parse_term(self) -> Expr:
+    def _parse_term(self) -> Expr | None:
         """Parse term.
 
         term → factor ( ( "+" | "-" ) factor )*
@@ -573,7 +610,7 @@ class Parser:
             lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
-    def _parse_factor(self) -> Expr:
+    def _parse_factor(self) -> Expr | None:
         """Parse factor.
 
         factor → power ( ( "*" | "/" | "//" | "%" ) power )*
@@ -596,7 +633,7 @@ class Parser:
             lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
-    def _parse_power(self) -> Expr:
+    def _parse_power(self) -> Expr | None:
         """Parse power.
 
         power → unary ( "**" power )*
@@ -616,7 +653,7 @@ class Parser:
             lexpr = BinOp(lexpr, operator, rexpr)
         return lexpr
 
-    def _parse_unary(self) -> Expr:
+    def _parse_unary(self) -> Expr | None:
         """Parse unary.
 
         unary → ( "+" | "-" | "!" ) unary
@@ -638,7 +675,7 @@ class Parser:
             return Unary(operator, rexpr)
         return self._parse_primary()
 
-    def _parse_primary(self) -> Expr:
+    def _parse_primary(self) -> Expr | None:
         """Parse primary.
 
         primary → NUMBER | STRING | BOOLEAN | NULL
@@ -684,6 +721,8 @@ class Parser:
                 f"unexpected {indent}",
                 self._current(),
             )
+        if not self._current().value:
+            return None
         raise ParseError(
             ErrorType.SYNTAX,
             f"invalid symbol {self._current().value!r}",

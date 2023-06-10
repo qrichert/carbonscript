@@ -10,6 +10,7 @@ from .ast import (
     Group,
     IfStmt,
     Literal,
+    LogicOp,
     Stmt,
     Unary,
     VarDecl,
@@ -112,7 +113,9 @@ class Interpreter:
 
     def _interpret_expr(self, expr: Expr) -> LiteralValue:
         if isinstance(expr, BinOp):
-            return self._interpret_binop(expr)
+            return self._interpret_bin_op(expr)
+        if isinstance(expr, LogicOp):
+            return self._interpret_logic_op(expr)
         if isinstance(expr, Unary):
             return self._interpret_unary_expr(expr)
         if isinstance(expr, Literal):
@@ -123,10 +126,10 @@ class Interpreter:
             return self._interpret_assignment(expr)
         assert False, f"Unmatched expression type {expr.__class__.__name__!r}."
 
-    def _interpret_binop(self, binop: BinOp) -> LiteralValue:
-        lval: LiteralValue = self._interpret_expr(binop.lexpr)
-        rval: LiteralValue = self._interpret_expr(binop.rexpr)
-        op: TokenType = binop.operator
+    def _interpret_bin_op(self, bin_op: BinOp) -> LiteralValue:
+        lval: LiteralValue = self._interpret_expr(bin_op.lexpr)
+        rval: LiteralValue = self._interpret_expr(bin_op.rexpr)
+        op: TokenType = bin_op.operator
         # TODO: implement correct behaviour depending on type.
         #  see with LiteralValue class and maybe subclasses.
         match op:
@@ -157,6 +160,24 @@ class Interpreter:
             case TokenType.DBLSTAR:
                 return lval**rval
         assert False, f"Unmatched binary operator {op.__class__.__name__!r}."
+
+    def _interpret_logic_op(self, logic_op: LogicOp) -> LiteralValue:
+        lval: LiteralValue = self._interpret_expr(logic_op.lexpr)
+        op: TokenType = logic_op.operator
+        match op:
+            case TokenType.OR:
+                # TODO: bool, should use the __bool__ once we've got real
+                #  subclasses for LiteralValue (is_truthy()?).
+                if bool(lval):
+                    return lval
+            case TokenType.AND:
+                if not bool(lval):
+                    return lval
+            case _:
+                assert False, f"Unmatched logic operator {op.__class__.__name__!r}."
+        # Do NOT evaluate rexpr if not needed, it can have side effects.
+        rval: LiteralValue = self._interpret_expr(logic_op.rexpr)
+        return rval
 
     def _interpret_unary_expr(self, unary: Unary) -> LiteralValue:
         value: LiteralValue = self._interpret_expr(unary.rexpr)

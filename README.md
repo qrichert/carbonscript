@@ -10,13 +10,13 @@ easy to pick up.
 
 ## Roadmap
 
-- Logical operators (`and`, `or`)
 - In-place operations (`+=`, `-=`, etc.)
 - Iterables (`[a, b, c]`)
 - `for` loops
 - Replace unary `!` with `not`.
 - Functions
 - Classes
+- Refactor error handling.
 - Standard library (small).
 - Python bindings and standard library overrides.
 - Resource management/usage limits.

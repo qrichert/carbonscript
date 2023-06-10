@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 
 from .tokens import TokenType
 from .values import LiteralValue
@@ -14,6 +13,20 @@ class Expr:
     def __repr__(self) -> str:
         class_name: str = self.__class__.__name__
         return f"{class_name}()"
+
+
+@dataclass
+class LogicOp(Expr):
+    """Operator and left/right values to operate on (e.g, `A and B`)."""
+
+    lexpr: Expr
+    operator: TokenType
+    rexpr: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        operator: str = self.operator.value
+        return f"{class_name}({self.lexpr!r}, {operator}, {self.rexpr!r})"
 
 
 @dataclass

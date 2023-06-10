@@ -17,6 +17,7 @@ from carbonscript.ast import (
     Group,
     IfStmt,
     Literal,
+    LogicOp,
     Stmt,
     Unary,
     VarDecl,
@@ -809,6 +810,90 @@ class TestExpressions(unittest.TestCase):
             parse_expression("a = 2+2 (3+3)")
         self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
 
+    def test_logic_or(self) -> None:
+        self.assertEqual(
+            parse_expression("a or b"),
+            LogicOp(
+                Literal(TokenType.IDENTIFIER, "a"),
+                TokenType.OR,
+                Literal(TokenType.IDENTIFIER, "b"),
+            ),
+        )
+
+    def test_logic_or_chained(self) -> None:
+        self.assertEqual(
+            parse_expression("a or b or 3"),
+            LogicOp(
+                LogicOp(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.OR,
+                    Literal(TokenType.IDENTIFIER, "b"),
+                ),
+                TokenType.OR,
+                Literal(TokenType.NUMBER, D("3")),
+            ),
+        )
+
+    def test_logic_or_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1or")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
+    def test_logic_and(self) -> None:
+        self.assertEqual(
+            parse_expression("a and b"),
+            LogicOp(
+                Literal(TokenType.IDENTIFIER, "a"),
+                TokenType.AND,
+                Literal(TokenType.IDENTIFIER, "b"),
+            ),
+        )
+
+    def test_logic_and_chained(self) -> None:
+        self.assertEqual(
+            parse_expression("a and b and 3"),
+            LogicOp(
+                LogicOp(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.AND,
+                    Literal(TokenType.IDENTIFIER, "b"),
+                ),
+                TokenType.AND,
+                Literal(TokenType.NUMBER, D("3")),
+            ),
+        )
+
+    def test_logic_and_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1and")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
+    def test_logic_and_or_precedence(self) -> None:
+        self.assertEqual(
+            parse_expression("1+1 or 2-2 and 3*3"),
+            LogicOp(
+                BinOp(
+                    Literal(TokenType.NUMBER, D("1")),
+                    TokenType.PLUS,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+                TokenType.OR,
+                LogicOp(
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("2")),
+                        TokenType.MINUS,
+                        Literal(TokenType.NUMBER, D("2")),
+                    ),
+                    TokenType.AND,
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("3")),
+                        TokenType.STAR,
+                        Literal(TokenType.NUMBER, D("3")),
+                    ),
+                ),
+            ),
+        )
+
     def test_equality_equal(self) -> None:
         self.assertEqual(
             parse_expression("1==3"),
@@ -828,6 +913,11 @@ class TestExpressions(unittest.TestCase):
                 Literal(TokenType.NUMBER, D("3")),
             ),
         )
+
+    def test_equality_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1==")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_comparison_greater_than(self) -> None:
         self.assertEqual(
@@ -869,6 +959,11 @@ class TestExpressions(unittest.TestCase):
             ),
         )
 
+    def test_comparison_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1>=")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
     def test_term_addition(self) -> None:
         self.assertEqual(
             parse_expression("3+1"),
@@ -888,6 +983,11 @@ class TestExpressions(unittest.TestCase):
                 Literal(TokenType.NUMBER, D("1")),
             ),
         )
+
+    def test_term_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1*")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_factor_multiplication(self) -> None:
         self.assertEqual(
@@ -929,6 +1029,11 @@ class TestExpressions(unittest.TestCase):
             ),
         )
 
+    def test_factor_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1*")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
     def test_power(self) -> None:
         self.assertEqual(
             parse_expression("3**1"),
@@ -938,6 +1043,11 @@ class TestExpressions(unittest.TestCase):
                 Literal(TokenType.NUMBER, D("1")),
             ),
         )
+
+    def test_power_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1**")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_unary_plus(self) -> None:
         self.assertEqual(
@@ -965,6 +1075,11 @@ class TestExpressions(unittest.TestCase):
                 Literal(TokenType.NUMBER, D("42")),
             ),
         )
+
+    def test_unary_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("+")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_parenthesis(self) -> None:
         self.assertEqual(
