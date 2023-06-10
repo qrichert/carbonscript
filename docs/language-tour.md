@@ -11,7 +11,6 @@
 - [Conditions](#conditions)
 - [Loops](#loops)
 - [Comments](#comments)
-- [Complete Grammar](#complete-grammar)
 
 ## Identifiers
 
@@ -212,45 +211,4 @@ const foo = 1  # This one too.
 
 ## This is a multiline comment...
    ...which spans two lines. ##
-```
-
-## Complete Grammar
-
-```
-program       → declaration* EOF
-
-
-declaration   → var_decl
-              | stmt
-var_decl      → ( "var" | "const" ) IDENTIFIER "=" expr "\n"
-
-
-stmt          → expr_stmt
-              | if_stmt
-              | while_stmt
-              | break_stmt
-              | continue_stmt
-              | block
-expr_stmt     → expr "\n"
-if_stmt       → "if" "(" expr ")" "\n" block
-                ( "else" ( if_stmt | "\n" block ) )?
-while_stmt    → "while" "(" expr ")" "\n" block
-break_stmt    → "break" "\n"
-continue_stmt → "continue" "\n"
-block         → INDENT declaration+ DEDENT
-
-
-expr          → assignment
-assignment    → IDENTIFIER "=" assignment
-              | equality
-equality      → comparison ( ( "==" | "!=" ) comparison )*
-comparison    → term ( ( ">" | ">=" | "<" | "<=" ) term )*
-term          → factor ( ( "+" | "-" ) factor )*
-factor        → power ( ( "*" | "/" | "//" | "%" ) power )*
-power         → unary ( "**" power )*
-unary         → ( "+" | "-" | "!" ) unary
-              | primary
-primary       → NUMBER | STRING | BOOLEAN | NULL
-              | "(" expr ")"
-              | IDENTIFIER
 ```

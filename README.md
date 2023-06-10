@@ -14,16 +14,22 @@ easy to pick up.
 - In-place operations (`+=`, `-=`, etc.)
 - Iterables (`[a, b, c]`)
 - `for` loops
+- Replace unary `!` with `not`.
 - Functions
 - Classes
-- Resource management/Usage limits
-- Standard library.
+- Standard library (small).
+- Python bindings and standard library overrides.
+- Resource management/usage limits.
+- Refactoring/cleanup
+- Optimizations
 
 ## Language Tour
 
-See [Language Tour](docs/language-tour.md) for more.
+See [Language Tour](docs/language-tour.md) for quick overview.
 
 You may also read [The Big One](tests/fixtures/the_big_one.cbn).
+
+If you're into that, here is the [Grammar](docs/grammar.md).
 
 This is how CarbonScript looks and feels like:
 
