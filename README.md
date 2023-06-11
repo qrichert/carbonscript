@@ -10,7 +10,6 @@ easy to pick up.
 
 ## Roadmap
 
-- In-place operations (`+=`, `-=`, etc.)
 - Iterables (`[a, b, c]`)
 - `for` loops
 - Replace unary `!` with `not`.

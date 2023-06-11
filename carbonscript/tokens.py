@@ -13,6 +13,13 @@ class TokenType(enum.Enum):
     IDENTIFIER = "IDENTIFIER"  # some_variable
     NUMBER = "NUMBER"  # 1.618
     STRING = "STRING"  # "hello, world"
+    DBLSTAREQ = "DBLSTAREQ"  # **=
+    STAREQ = "STAREQ"  # *=
+    DBLSLASHEQ = "DBLSLASHEQ"  # //=
+    SLASHEQ = "SLASHEQ"  # /=
+    PERCENTEQ = "PERCENTEQ"  # %=
+    PLUSEQ = "PLUSEQ"  # +=
+    MINUSEQ = "MINUSEQ"  # -=
     DBLSTAR = "DBLSTAR"  # **
     STAR = "STAR"  # *
     DBLSLASH = "DBLSLASH"  # //

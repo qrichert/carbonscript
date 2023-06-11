@@ -54,6 +54,7 @@ class TestLexer(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.script_using_all_tokens: str = (
             'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= = ° '
+            + "**= *= //= /= %= += -="
             + " ".join(KEYWORDS)
             + "##ml comment##\n# sl comment"
         )
@@ -319,6 +320,22 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.PERCENT, "%"),
                 Token(TokenType.PLUS, "+"),
                 Token(TokenType.MINUS, "-"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_in_place_assignment_operators(self) -> None:
+        tokens: list[Token] = lex_script("**=*=//=/=%=+=-=")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.DBLSTAREQ, "**="),
+                Token(TokenType.STAREQ, "*="),
+                Token(TokenType.DBLSLASHEQ, "//="),
+                Token(TokenType.SLASHEQ, "/="),
+                Token(TokenType.PERCENTEQ, "%="),
+                Token(TokenType.PLUSEQ, "+="),
+                Token(TokenType.MINUSEQ, "-="),
                 Token(TokenType.EOF),
             ],
         )

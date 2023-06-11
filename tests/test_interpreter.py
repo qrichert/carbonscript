@@ -95,6 +95,10 @@ class TestStatements(unittest.TestCase):
         self.assertEqual(env.get("i"), D("3"))
         self.assertEqual(env.get("j"), D("3"))
 
+    def test_var_in_place_operation(self) -> None:
+        env = interpret_script_and_return_env("var i = 0\ni += 2*2")
+        self.assertEqual(env.get("i"), D("4"))
+
     def test_const_declaration(self) -> None:
         env = interpret_script_and_return_env("const i = 42")
         self.assertEqual(env.get("i"), D("42"))
@@ -102,6 +106,10 @@ class TestStatements(unittest.TestCase):
     def test_const_assignment(self) -> None:
         with self.assertRaises(RuntimeError):
             interpret_script("const i = 42\ni = 1337")
+
+    def test_const_in_place_operation(self) -> None:
+        with self.assertRaises(RuntimeError):
+            interpret_script("const i = 42\ni += 1337")
 
     def test_var_operation_with_var(self) -> None:
         env = interpret_script_and_return_env(
@@ -179,6 +187,34 @@ class TestBasicExpressions(unittest.TestCase):
 
     def test_power(self) -> None:
         self.assertEqual(interpret_as_expression("3**2"), D("9"))
+
+    def test_in_place_term_addition(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo += 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("5"), False)})
+
+    def test_in_place_term_subtraction(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo -= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+
+    def test_in_place_factor_multiplication(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo *= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("6"), False)})
+
+    def test_in_place_factor_division(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo /= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("1.5"), False)})
+
+    def test_in_place_factor_integer_division(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo //= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+
+    def test_in_place_factor_modulo(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo %= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+
+    def test_in_place_power(self) -> None:
+        env = interpret_script_and_return_env("var foo = 3\nfoo **= 2")
+        self.assertDictEqual(env.to_dict(), {"foo": (D("9"), False)})
 
     def test_unary_plus(self) -> None:
         self.assertEqual(interpret_as_expression("+42"), D("42"))

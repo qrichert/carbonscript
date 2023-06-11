@@ -810,6 +810,23 @@ class TestExpressions(unittest.TestCase):
             parse_expression("a = 2+2 (3+3)")
         self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
 
+    def test_in_place_operation_multiple_expressions(self) -> None:
+        self.assertEqual(
+            parse_expression("a += 2*2"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "a"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.PLUS,
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("2")),
+                        TokenType.STAR,
+                        Literal(TokenType.NUMBER, D("2")),
+                    ),
+                ),
+            ),
+        )
+
     def test_logic_or(self) -> None:
         self.assertEqual(
             parse_expression("a or b"),
@@ -986,7 +1003,7 @@ class TestExpressions(unittest.TestCase):
 
     def test_term_missing_right_part_of_expression(self) -> None:
         with self.assertRaises(ParseError) as ctx:
-            parse_expression("1*")
+            parse_expression("1+")
         self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
 
     def test_factor_multiplication(self) -> None:
@@ -1048,6 +1065,112 @@ class TestExpressions(unittest.TestCase):
         with self.assertRaises(ParseError) as ctx:
             parse_expression("1**")
         self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
+    def test_in_place_term_addition(self) -> None:
+        self.assertEqual(
+            parse_expression("foo+=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.PLUS,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_term_subtraction(self) -> None:
+        self.assertEqual(
+            parse_expression("foo-=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.MINUS,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_term_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1-=")
+        self.assertEqual(ctx.exception.token, Token(TokenType.MINUSEQ, "-="))
+
+    def test_in_place_factor_multiplication(self) -> None:
+        self.assertEqual(
+            parse_expression("foo*=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.STAR,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_factor_division(self) -> None:
+        self.assertEqual(
+            parse_expression("foo/=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.SLASH,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_factor_integer_division(self) -> None:
+        self.assertEqual(
+            parse_expression("foo//=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.DBLSLASH,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_factor_modulo(self) -> None:
+        self.assertEqual(
+            parse_expression("foo%=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.PERCENT,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_factor_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1/=")
+        self.assertEqual(ctx.exception.token, Token(TokenType.SLASHEQ, "/="))
+
+    def test_in_place_power(self) -> None:
+        self.assertEqual(
+            parse_expression("foo**=1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                    TokenType.DBLSTAR,
+                    Literal(TokenType.NUMBER, D("1")),
+                ),
+            ),
+        )
+
+    def test_in_place_power_missing_right_part_of_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("1**=")
+        self.assertEqual(ctx.exception.token, Token(TokenType.DBLSTAREQ, "**="))
 
     def test_unary_plus(self) -> None:
         self.assertEqual(

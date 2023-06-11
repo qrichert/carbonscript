@@ -208,6 +208,17 @@ class Preprocessor:
             return None
 
 
+MAP_IN_PLACE_TO_OPERATOR: dict = {
+    TokenType.PLUSEQ: TokenType.PLUS,
+    TokenType.MINUSEQ: TokenType.MINUS,
+    TokenType.STAREQ: TokenType.STAR,
+    TokenType.SLASHEQ: TokenType.SLASH,
+    TokenType.DBLSLASHEQ: TokenType.DBLSLASH,
+    TokenType.PERCENTEQ: TokenType.PERCENT,
+    TokenType.DBLSTAREQ: TokenType.DBLSTAR,
+}
+
+
 class Parser:
     """Build Abstract Syntax Tree (AST) from tokens.
 
@@ -487,6 +498,7 @@ class Parser:
         """Parse assignment.
 
         assignment → IDENTIFIER "=" assignment
+                   | IDENTIFIER ( "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) logic_or
                    | logic_or
         """
         expr: Expr = self._parse_logic_or()
@@ -494,17 +506,37 @@ class Parser:
         # "expr" is the lvalue of an assignment, if followed by "=".
         if self._consume_token_if_matches(TokenType.EQUAL):
             if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
-                help_text: str = ""
-                if isinstance(expr, Unary):
-                    help_text = "did you forget parentheses around unary expression?"
-                help_text = f" ({help_text})" if help_text else ""
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    f"assignment target is not an identifier{help_text}",
+                    "assignment target is not an identifier",
                     self._previous(),  # "=" sign.
                 )
             lidentifier: Literal = expr
             rexpr: Expr = self._parse_assignment()
+            return Assign(lidentifier, rexpr)
+
+        token_type: TokenType
+        if token_type := self._consume_token_if_matches(
+            TokenType.PLUSEQ,
+            TokenType.MINUSEQ,
+            TokenType.STAREQ,
+            TokenType.SLASHEQ,
+            TokenType.DBLSLASHEQ,
+            TokenType.PERCENTEQ,
+            TokenType.DBLSTAREQ,
+        ):
+            if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
+                raise ParseError(
+                    ErrorType.SYNTAX,
+                    "in-place operation target is not an identifier",
+                    self._previous(),  # "+=", etc. sign.
+                )
+            lidentifier: Literal = expr
+            rexpr: Expr = self._parse_logic_or()
+            # In place operations are syntaxic sugar:
+            # foo += 1 <=> foo = foo + 1
+            operator: TokenType = MAP_IN_PLACE_TO_OPERATOR[token_type]
+            rexpr: BinOp = BinOp(lidentifier, operator, rexpr)
             return Assign(lidentifier, rexpr)
 
         return expr

@@ -60,6 +60,9 @@ Double quotes can be escaped:
 - `+` Plus
 - `-` Minus
 
+They all have their in-place counterpart (`**=`, `*=`, `//=`, `/=`,
+`%=`, `+=`, `-=`).
+
 ## Logic Operators
 
 - `or` If left expression is truthy, return left, else right.
