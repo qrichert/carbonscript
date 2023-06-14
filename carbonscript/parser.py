@@ -3,6 +3,7 @@ from decimal import Decimal
 from .ast import (
     Assign,
     BinOp,
+    BinOpRTL,
     Block,
     BreakStmt,
     ConstDecl,
@@ -497,26 +498,15 @@ class Parser:
     def _parse_assignment(self) -> Expr | None:
         """Parse assignment.
 
-        assignment → IDENTIFIER "=" assignment
-                   | IDENTIFIER ( "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) logic_or
+        assignment → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) assignment
                    | logic_or
         """
         expr: Expr = self._parse_logic_or()
 
-        # "expr" is the lvalue of an assignment, if followed by "=".
-        if self._consume_token_if_matches(TokenType.EQUAL):
-            if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
-                raise ParseError(
-                    ErrorType.SYNTAX,
-                    "assignment target is not an identifier",
-                    self._previous(),  # "=" sign.
-                )
-            lidentifier: Literal = expr
-            rexpr: Expr = self._parse_assignment()
-            return Assign(lidentifier, rexpr)
-
-        token_type: TokenType
-        if token_type := self._consume_token_if_matches(
+        operator: TokenType
+        # "expr" is the lvalue of an assignment, if followed by "=", etc.
+        if operator := self._consume_token_if_matches(
+            TokenType.EQUAL,
             TokenType.PLUSEQ,
             TokenType.MINUSEQ,
             TokenType.STAREQ,
@@ -528,17 +518,30 @@ class Parser:
             if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    "in-place operation target is not an identifier",
+                    "assignment target is not an identifier",
                     self._previous(),  # "+=", etc. sign.
                 )
             lidentifier: Literal = expr
-            rexpr: Expr = self._parse_logic_or()
-            # In place operations are syntaxic sugar:
-            # foo += 1 <=> foo = foo + 1
-            operator: TokenType = MAP_IN_PLACE_TO_OPERATOR[token_type]
-            rexpr: BinOp = BinOp(lidentifier, operator, rexpr)
-            return Assign(lidentifier, rexpr)
-
+            rexpr: Expr = self._parse_assignment()
+            if operator == TokenType.EQUAL:
+                expr = Assign(lidentifier, rexpr)
+            else:
+                operator = MAP_IN_PLACE_TO_OPERATOR[operator]
+                # In place operations are syntaxic sugar (almost):
+                #
+                #   foo += 1 <=> foo = foo + 1
+                #
+                # The only difference is that rexpr must be evaluated
+                # before lidentifier (right-associative):
+                #
+                #   foo += (foo = 3) <=> foo = foo + (foo = 3)
+                #       Evaluate this BEFORE the addition ↑
+                #
+                # RTL => foo = 3 + 3   (correct)
+                # LTR => foo = foo + 3 (wrong)
+                rexpr: BinOpRTL = BinOpRTL(lidentifier, operator, rexpr)
+                expr = Assign(lidentifier, rexpr)
+            return expr
         return expr
 
     def _parse_logic_or(self) -> Expr | None:
@@ -682,7 +685,7 @@ class Parser:
                     "missing right part of expression",
                     self._current(),
                 )
-            lexpr = BinOp(lexpr, operator, rexpr)
+            lexpr = BinOpRTL(lexpr, operator, rexpr)
         return lexpr
 
     def _parse_unary(self) -> Expr | None:

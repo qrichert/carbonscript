@@ -13,6 +13,8 @@ easy to pick up.
 - Iterables (`[a, b, c]`)
 - `for` loops
 - Replace unary `!` with `not`.
+- Make classes out of LiteralValues.
+- Add global scope to Environment.
 - Functions
 - Classes
 - Refactor error handling.

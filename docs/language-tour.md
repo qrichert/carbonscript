@@ -52,16 +52,52 @@ Double quotes can be escaped:
 
 ## Arithmetic Operators
 
-- `**` Power
-- `*` Multiply
-- `//` Integer Divide
-- `/` Divide
-- `%` Modulus
 - `+` Plus
 - `-` Minus
+- `*` Multiply
+- `/` Divide
+- `//` Integer Divide
+- `%` Modulus
+- `**` Power
 
-They all have their in-place counterpart (`**=`, `*=`, `//=`, `/=`,
-`%=`, `+=`, `-=`).
+They all have their in-place counterpart (`+=`, `-=`, `*=`, `/=`, `//=`,
+`%=`, `**=`).
+
+> **Note**
+> In-place operators, like the assignment operator (`=`), are right
+> associative, just like in C (but unlike in Python and in JavaScript).
+> This means that in `foo += (foo = 3)`, `(foo = 3)` is evaluated first,
+> with its side-effect.
+>
+> ```coffee
+> var foo = 42
+> foo += (foo = 3)
+> print(foo)  # 6
+> ```
+>
+> In C:
+>
+> ```c
+> int foo = 42;
+> foo += (foo = 3);
+> printf("%d", foo);  // 6
+> ```
+>
+> In Python:
+>
+> ```python
+> foo = 42
+> foo += (foo := 3)
+> print(foo)  # 45
+> ```
+>
+> In JavaScript:
+>
+> ```javascript
+> var foo = 42;
+> foo += foo = 3;
+> console.log(foo); // 45
+> ```
 
 ## Logic Operators
 
@@ -78,18 +114,18 @@ Parentheses can be used to change the precedence of expressions:
 
 ## Operator Precedence and Associativity
 
-| precedence | name       | operator                                  | associativity |
-| ---------- | ---------- | ----------------------------------------- | ------------- |
-| 1          | assignment | `=`                                       | right         |
-| 2          | logic or   | `or`                                      | left          |
-| 3          | logic and  | `and`                                     | left          |
-| 4          | equality   | `==`, `!=`                                | left          |
-| 5          | comparison | `>`, `>=`, `<`, `<=`                      | left          |
-| 6          | term       | `+`, `-`                                  | left          |
-| 7          | factor     | `*`, `/`, `//`, `%`                       | left          |
-| 8          | power      | `**`                                      | right         |
-| 9          | unary      | `+x`, `-x`, `!x`                          | right         |
-| 10         | primary    | literals, keywords, `(`, `)`, identifiers | left          |
+| precedence | name       | operator                                        | associativity |
+| ---------- | ---------- | ----------------------------------------------- | ------------- |
+| 1          | assignment | `=`, `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` | right         |
+| 2          | logic or   | `or`                                            | left          |
+| 3          | logic and  | `and`                                           | left          |
+| 4          | equality   | `==`, `!=`                                      | left          |
+| 5          | comparison | `>`, `>=`, `<`, `<=`                            | left          |
+| 6          | term       | `+`, `-`                                        | left          |
+| 7          | factor     | `*`, `/`, `//`, `%`                             | left          |
+| 8          | power      | `**`                                            | right         |
+| 9          | unary      | `+x`, `-x`, `!x`                                | right         |
+| 10         | primary    | literals, keywords, `(`, `)`, identifiers       | left          |
 
 ## Variables and Constants
 

@@ -1,6 +1,7 @@
 from .ast import (
     Assign,
     BinOp,
+    BinOpRTL,
     Block,
     BreakStmt,
     ConstDecl,
@@ -127,8 +128,14 @@ class Interpreter:
         assert False, f"Unmatched expression type {expr.__class__.__name__!r}."
 
     def _interpret_bin_op(self, bin_op: BinOp) -> LiteralValue:
-        lval: LiteralValue = self._interpret_expr(bin_op.lexpr)
-        rval: LiteralValue = self._interpret_expr(bin_op.rexpr)
+        lval: LiteralValue
+        rval: LiteralValue
+        if isinstance(bin_op, BinOpRTL):  # Right-To-Left, rval first
+            rval = self._interpret_expr(bin_op.rexpr)
+            lval = self._interpret_expr(bin_op.lexpr)
+        else:  # Left-To-Right, lval first
+            lval = self._interpret_expr(bin_op.lexpr)
+            rval = self._interpret_expr(bin_op.rexpr)
         op: TokenType = bin_op.operator
         # TODO: implement correct behaviour depending on type.
         #  see with LiteralValue class and maybe subclasses.

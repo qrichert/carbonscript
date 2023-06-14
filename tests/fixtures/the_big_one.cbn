@@ -30,7 +30,7 @@ const divide = 3 / 4
 const int_divide = 4 // 3
 const modulo = 4 % 4
 
-const power = 2 ** 4
+const power = 2**4
 
 const unary_plus = +7
 const unary_minus = -7
@@ -53,6 +53,11 @@ var chained_1 = null
 var chained_2 = null
 const chained_assign = chained_1 = chained_2 = 9
 
+var in_place_a = 1
+var in_place_b = 3
+in_place_a += in_place_b += in_place_b += in_place_b = 4
+# TODO print(in_place_a)  # 17
+# TODO print(in_place_b)  # 16
 
 const logic_or = true or false  # true
 const logic_and = true and false  # false

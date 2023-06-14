@@ -20,7 +20,7 @@ https://blog.expo.dev/building-a-code-editor-with-monaco-f84b3a06deaf
 func do_something()
     a = 2
     b = 4
-    return a + b ** a
+    return a + b**a
 
 
 test a_plus_b_eq_c()

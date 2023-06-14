@@ -8,6 +8,7 @@ import carbonscript.parser
 from carbonscript.ast import (
     Assign,
     BinOp,
+    BinOpRTL,
     Block,
     BreakStmt,
     ConstDecl,
@@ -815,13 +816,52 @@ class TestExpressions(unittest.TestCase):
             parse_expression("a += 2*2"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "a"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "a"),
                     TokenType.PLUS,
                     BinOp(
                         Literal(TokenType.NUMBER, D("2")),
                         TokenType.STAR,
                         Literal(TokenType.NUMBER, D("2")),
+                    ),
+                ),
+            ),
+        )
+
+    def test_in_place_operation_with_assignment(self) -> None:
+        self.assertEqual(
+            parse_expression("a += b = 2"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "a"),
+                BinOpRTL(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.PLUS,
+                    Assign(
+                        Literal(TokenType.IDENTIFIER, "b"),
+                        Literal(TokenType.NUMBER, D("2")),
+                    ),
+                ),
+            ),
+        )
+
+    def test_in_place_operation_chained(self) -> None:
+        self.assertEqual(
+            parse_expression("a += b += b = 1"),
+            Assign(
+                Literal(TokenType.IDENTIFIER, "a"),
+                BinOpRTL(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.PLUS,
+                    Assign(
+                        Literal(TokenType.IDENTIFIER, "b"),
+                        BinOpRTL(
+                            Literal(TokenType.IDENTIFIER, "b"),
+                            TokenType.PLUS,
+                            Assign(
+                                Literal(TokenType.IDENTIFIER, "b"),
+                                Literal(TokenType.NUMBER, D("1")),
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -1054,7 +1094,7 @@ class TestExpressions(unittest.TestCase):
     def test_power(self) -> None:
         self.assertEqual(
             parse_expression("3**1"),
-            BinOp(
+            BinOpRTL(
                 Literal(TokenType.NUMBER, D("3")),
                 TokenType.DBLSTAR,
                 Literal(TokenType.NUMBER, D("1")),
@@ -1071,7 +1111,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo+=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.PLUS,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1084,7 +1124,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo-=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.MINUS,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1102,7 +1142,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo*=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.STAR,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1115,7 +1155,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo/=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.SLASH,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1128,7 +1168,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo//=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.DBLSLASH,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1141,7 +1181,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo%=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.PERCENT,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1159,7 +1199,7 @@ class TestExpressions(unittest.TestCase):
             parse_expression("foo**=1"),
             Assign(
                 Literal(TokenType.IDENTIFIER, "foo"),
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.IDENTIFIER, "foo"),
                     TokenType.DBLSTAR,
                     Literal(TokenType.NUMBER, D("1")),
@@ -1261,10 +1301,10 @@ class TestExpressions(unittest.TestCase):
     def test_power_associativity(self) -> None:
         self.assertEqual(
             parse_expression("7**9**3"),
-            BinOp(
+            BinOpRTL(
                 Literal(TokenType.NUMBER, D("7")),
                 TokenType.DBLSTAR,
-                BinOp(
+                BinOpRTL(
                     Literal(TokenType.NUMBER, D("9")),
                     TokenType.DBLSTAR,
                     Literal(TokenType.NUMBER, D("3")),

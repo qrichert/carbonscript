@@ -74,11 +74,7 @@ class TestStatements(unittest.TestCase):
         env = interpret_script_and_return_env("var i = 42")
         self.assertEqual(env.get("i"), D("42"))
 
-    def test_var_assignment(self) -> None:
-        env = interpret_script_and_return_env("var i = 42\ni = 1337")
-        self.assertEqual(env.get("i"), D("1337"))
-
-    def test_var_operation_assignment(self) -> None:
+    def test_var_operation_declaration(self) -> None:
         env = interpret_script_and_return_env("var i = 12 * 9")
         self.assertEqual(env.get("i"), D("108"))
 
@@ -90,6 +86,16 @@ class TestStatements(unittest.TestCase):
         self.assertEqual(env.get("b"), D("108"))
         self.assertEqual(env.get("c"), D("108"))
 
+    def test_const_declaration(self) -> None:
+        env = interpret_script_and_return_env("const i = 42")
+        self.assertEqual(env.get("i"), D("42"))
+
+
+class TestBasicExpressions(unittest.TestCase):
+    def test_var_assignment(self) -> None:
+        env = interpret_script_and_return_env("var i = 42\ni = 1337")
+        self.assertEqual(env.get("i"), D("1337"))
+
     def test_var_chained_assignment(self) -> None:
         env = interpret_script_and_return_env("var i = null\nvar j = null\ni = j = 3")
         self.assertEqual(env.get("i"), D("3"))
@@ -99,10 +105,6 @@ class TestStatements(unittest.TestCase):
         env = interpret_script_and_return_env("var i = 0\ni += 2*2")
         self.assertEqual(env.get("i"), D("4"))
 
-    def test_const_declaration(self) -> None:
-        env = interpret_script_and_return_env("const i = 42")
-        self.assertEqual(env.get("i"), D("42"))
-
     def test_const_assignment(self) -> None:
         with self.assertRaises(RuntimeError):
             interpret_script("const i = 42\ni = 1337")
@@ -111,14 +113,35 @@ class TestStatements(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             interpret_script("const i = 42\ni += 1337")
 
+    def test_in_place_with_assignment(self) -> None:
+        env = interpret_script_and_return_env("var i = 1\nvar j = 0\ni += j = 4")
+        self.assertEqual(env.get("i"), D("5"))
+        self.assertEqual(env.get("j"), D("4"))
+
+    def test_in_place_operation_chained(self) -> None:
+        env = interpret_script_and_return_env("var a = 1\nvar b = 3\na += b += b += 1")
+        self.assertEqual(env.get("a"), D("9"))
+        self.assertEqual(env.get("b"), D("8"))
+
+    def test_in_place_operation_chained_with_assignment_short(self) -> None:
+        env = interpret_script_and_return_env("var foo = 42\nfoo += (foo = 3)")
+        self.assertEqual(env.get("foo"), D("6"))
+
+    def test_in_place_operation_chained_with_assignment_long(self) -> None:
+        # RTL: 1 + (8 + (4 + (4))) (a = 17, b = 16)
+        # LTR: 1 + (3 + 3 + 4) (a = 11, b = 10)
+        env = interpret_script_and_return_env(
+            "var a = 1\nvar b = 3\na += b += b += b = 4"
+        )
+        self.assertEqual(env.get("a"), D("17"))
+        self.assertEqual(env.get("b"), D("16"))
+
     def test_var_operation_with_var(self) -> None:
         env = interpret_script_and_return_env(
             "const a = 3\nconst b = 5\nconst c = a * b"
         )
         self.assertEqual(env.get("c"), D("15"))
 
-
-class TestBasicExpressions(unittest.TestCase):
     def test_logic_or(self) -> None:
         self.assertEqual(interpret_as_expression("true or true"), True)
         self.assertEqual(interpret_as_expression("false or true"), True)
@@ -190,31 +213,31 @@ class TestBasicExpressions(unittest.TestCase):
 
     def test_in_place_term_addition(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo += 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("5"), False)})
+        self.assertEqual(env.get("foo"), D("5"))
 
     def test_in_place_term_subtraction(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo -= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+        self.assertEqual(env.get("foo"), D("1"))
 
     def test_in_place_factor_multiplication(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo *= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("6"), False)})
+        self.assertEqual(env.get("foo"), D("6"))
 
     def test_in_place_factor_division(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo /= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("1.5"), False)})
+        self.assertEqual(env.get("foo"), D("1.5"))
 
     def test_in_place_factor_integer_division(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo //= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+        self.assertEqual(env.get("foo"), D("1"))
 
     def test_in_place_factor_modulo(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo %= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("1"), False)})
+        self.assertEqual(env.get("foo"), D("1"))
 
     def test_in_place_power(self) -> None:
         env = interpret_script_and_return_env("var foo = 3\nfoo **= 2")
-        self.assertDictEqual(env.to_dict(), {"foo": (D("9"), False)})
+        self.assertEqual(env.get("foo"), D("9"))
 
     def test_unary_plus(self) -> None:
         self.assertEqual(interpret_as_expression("+42"), D("42"))
@@ -264,6 +287,42 @@ class TestComplexExpressions(unittest.TestCase):
         self.assertEqual(interpret_as_expression("false and true or false"), False)
         self.assertEqual(interpret_as_expression("false and false or true"), True)
         self.assertEqual(interpret_as_expression("false and false or false"), False)
+
+    def test_order_of_side_effects_in_place_assignment_right(self) -> None:
+        # LTR: 1 + 3 = 4
+        # RTL: 3 + 3 = 6 (correct)
+        env = interpret_script_and_return_env("var a = 1\na += (a = 3)")
+        self.assertEqual(env.get("a"), D("6"))
+
+    def test_order_of_side_effects_equality_left(self) -> None:
+        # LTR: 3 == 3 = True (correct)
+        # RTL: 3 == 0 = False
+        env = interpret_script_and_return_env("var a = 0\nconst b = (a = 3) == a")
+        self.assertEqual(env.get("b"), True)
+
+    def test_order_of_side_effects_comparison_left(self) -> None:
+        # LTR: 3 <= 3 = True (correct)
+        # RTL: 3 <= 0 = False
+        env = interpret_script_and_return_env("var a = 0\nconst b = (a = 3) <= a")
+        self.assertEqual(env.get("b"), True)
+
+    def test_order_of_side_effects_term_left(self) -> None:
+        # LTR: 1 + 3 = 4 (correct)
+        # RTL: 3 + 3 = 6
+        env = interpret_script_and_return_env("var a = 1\na = a + (a = 3)")
+        self.assertEqual(env.get("a"), D("4"))
+
+    def test_order_of_side_effects_factor_left(self) -> None:
+        # LTR: 1 * 3 = 3 (correct)
+        # RTL: 3 * 3 = 9
+        env = interpret_script_and_return_env("var a = 1\na = a * (a = 3)")
+        self.assertEqual(env.get("a"), D("3"))
+
+    def test_order_of_side_effects_power_right(self) -> None:
+        # LTR: 3**2 = 9
+        # RTL: 6**2 = 36 (correct)
+        env = interpret_script_and_return_env("var a = 1\na = (3 * a) ** (a = 2)")
+        self.assertEqual(env.get("a"), D("36"))
 
     def test_logic_or_side_effects(self) -> None:
         env = interpret_script_and_return_env(
@@ -604,6 +663,8 @@ class TestTheBigOne(unittest.TestCase):
                 "chained_1": (D("9"), False),
                 "chained_2": (D("9"), False),
                 "chained_assign": (D("9"), True),
+                "in_place_a": (D("17"), False),
+                "in_place_b": (D("16"), False),
                 "logic_or": (True, True),
                 "logic_and": (False, True),
                 "no_side_effects_if_short_circuit": (False, True),

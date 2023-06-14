@@ -43,6 +43,11 @@ class BinOp(Expr):
         return f"{class_name}({self.lexpr!r}, {operator}, {self.rexpr!r})"
 
 
+@dataclass(repr=False)
+class BinOpRTL(BinOp):
+    """BinOp that is evaluated from Right-To-Left."""
+
+
 @dataclass
 class Unary(Expr):
     """Operator and right value to operate on (e.g. `-A`)"""

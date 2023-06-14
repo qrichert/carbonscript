@@ -7,6 +7,7 @@ import carbonscript.ast
 from carbonscript.ast import (
     Assign,
     BinOp,
+    BinOpRTL,
     Block,
     BreakStmt,
     ConstDecl,
@@ -95,6 +96,25 @@ class TestASTNodes(unittest.TestCase):
 
     def test_str_bin_op(self) -> None:
         expr = BinOp(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.PLUS,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_bin_op_rtl(self) -> None:
+        expr = BinOpRTL(
+            Literal(TokenType.NUMBER, "42"),
+            TokenType.PLUS,
+            Literal(TokenType.NUMBER, "108"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "BinOpRTL(Literal(NUMBER, '42'), PLUS, Literal(NUMBER, '108'))",
+        )
+
+    def test_str_bin_op_rtl(self) -> None:
+        expr = BinOpRTL(
             Literal(TokenType.NUMBER, "42"),
             TokenType.PLUS,
             Literal(TokenType.NUMBER, "108"),
