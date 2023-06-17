@@ -259,7 +259,7 @@ Let's break it down:
 5. `primary` matches.
 6. Peek ahead, is the next symbol a `*`? No. Try the next possible
    construct: `primary`.
-7. `primary` matches return `7`.
+7. `primary` matches, return `7`.
 
    ```
    7
@@ -293,7 +293,7 @@ Let's break it down:
 
     ```
     7 + 108 * 9
-    ↑
+         ↑
     ```
 
 12. The syntax requires a `group 2`, go to `group 2`.
@@ -338,7 +338,7 @@ Let's break it down:
      108  9
     ```
 
-19. `expression` completes, we have reach the end.
+19. `expression` completes, we have reached the end.
 
 This looks good. But there is a problem. Our grammar cannot parse
 expressions like this one:
@@ -395,7 +395,7 @@ group 1 → group 2 ( "+" group 2 )*
 
 Which you can read "`group 2`, followed by: a `+` and a `group 2`, an
 infinite number of times or not at all" (The `*` has the same meaning as
-in regular expression).
+in regular expressions).
 
 Let's try it:
 
@@ -434,10 +434,11 @@ primary    → NUMBER
 The translation to code is pretty straightforward:
 
 - Non-terminals (`group 1`, `group 2`, etc.) translate to functions. If
-  you encounter a non-terminal, you call its function.
+  you encounter a non-terminal, you call its parse function.
 - Terminals (`+`, `NUMBER`, etc.) match and consume tokens.
-- `|` translate to `if/else if/else` statements.
-- `*` translate to loops.
+- `|` translate to `if`/`else if`/`else` statements.
+- `+` and `*` translate to `while` loops.
+- `?` translate to `if` statements.
 
 ## Interpreting
 
