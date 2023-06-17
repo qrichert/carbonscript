@@ -16,6 +16,7 @@ from carbonscript.ast import (
     ExprStmt,
     Group,
     IfStmt,
+    ListIndex,
     Literal,
     LogicOp,
     Unary,
@@ -264,6 +265,23 @@ class TestASTNodes(unittest.TestCase):
 
     def test_str_assign(self) -> None:
         expr = Assign(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(str(expr), repr(expr))
+
+    def test_repr_list_index(self) -> None:
+        expr = ListIndex(
+            Literal(TokenType.IDENTIFIER, "foo"),
+            Literal(TokenType.NUMBER, "42"),
+        )
+        self.assertEqual(
+            repr(expr),
+            "ListIndex(Literal(IDENTIFIER, 'foo'), Literal(NUMBER, '42'))",
+        )
+
+    def test_str_list_index(self) -> None:
+        expr = ListIndex(
             Literal(TokenType.IDENTIFIER, "foo"),
             Literal(TokenType.NUMBER, "42"),
         )

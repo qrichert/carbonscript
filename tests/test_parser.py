@@ -17,6 +17,7 @@ from carbonscript.ast import (
     ExprStmt,
     Group,
     IfStmt,
+    ListIndex,
     Literal,
     LogicOp,
     Stmt,
@@ -746,6 +747,116 @@ class TestLiterals(unittest.TestCase):
         )
 
 
+class TestIterables(unittest.TestCase):
+    def test_list_empty(self) -> None:
+        self.assertEqual(
+            parse_expression("[]"),
+            Literal(TokenType.LSQBRACKET, []),
+        )
+
+    def test_list_one_element(self) -> None:
+        self.assertEqual(
+            parse_expression("[1]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    Literal(TokenType.NUMBER, D("1")),
+                ],
+            ),
+        )
+
+    def test_list_one_element_trailing_comma(self) -> None:
+        self.assertEqual(
+            parse_expression("[1,]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    Literal(TokenType.NUMBER, D("1")),
+                ],
+            ),
+        )
+
+    def test_list_one_element_multiple_trailing_commas(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("[1,,]"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.COMMA, ","))
+
+    def test_list_multiple_elements(self) -> None:
+        self.assertEqual(
+            parse_expression("[1,2]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    Literal(TokenType.NUMBER, D("1")),
+                    Literal(TokenType.NUMBER, D("2")),
+                ],
+            ),
+        )
+
+    def test_list_multiple_elements_trailing_comma(self) -> None:
+        self.assertEqual(
+            parse_expression("[1,2,]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    Literal(TokenType.NUMBER, D("1")),
+                    Literal(TokenType.NUMBER, D("2")),
+                ],
+            ),
+        )
+
+    def test_list_multiple_elements_multiple_trailing_commas(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("[1,2,,]"),
+        self.assertEqual(ctx.exception.token, Token(TokenType.COMMA, ","))
+
+    def test_list_with_expressions(self) -> None:
+        self.assertEqual(
+            parse_expression("[1+1, (2+2), foo]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("1")),
+                        TokenType.PLUS,
+                        Literal(TokenType.NUMBER, D("1")),
+                    ),
+                    Group(
+                        BinOp(
+                            Literal(TokenType.NUMBER, D("2")),
+                            TokenType.PLUS,
+                            Literal(TokenType.NUMBER, D("2")),
+                        ),
+                    ),
+                    Literal(TokenType.IDENTIFIER, "foo"),
+                ],
+            ),
+        )
+
+    def test_list_nested(self) -> None:
+        self.assertEqual(
+            parse_expression("[[1], [[2], 2]]"),
+            Literal(
+                TokenType.LSQBRACKET,
+                [
+                    Literal(TokenType.LSQBRACKET, [Literal(TokenType.NUMBER, D("1"))]),
+                    Literal(
+                        TokenType.LSQBRACKET,
+                        [
+                            Literal(
+                                TokenType.LSQBRACKET,
+                                [
+                                    Literal(TokenType.NUMBER, D("2")),
+                                ],
+                            ),
+                            Literal(TokenType.NUMBER, D("2")),
+                        ],
+                    ),
+                ],
+            ),
+        )
+
+
 class TestExpressions(unittest.TestCase):
     def test_with_whitespace(self) -> None:
         self.assertEqual(
@@ -792,14 +903,30 @@ class TestExpressions(unittest.TestCase):
         )
 
     def test_assignment_assigning_to_constant(self) -> None:
-        with self.assertRaises(ParseError) as ctx:
+        # Syntax error, but checked at runtime since expressions
+        # evaluating to lvalues are allowed. Should be parsed just fine.
+        self.assertEqual(
             parse_expression("2=3"),
-        self.assertEqual(ctx.exception.token, Token(TokenType.EQUAL, "="))
+            Assign(
+                Literal(TokenType.NUMBER, D("2")),
+                Literal(TokenType.NUMBER, D("3")),
+            ),
+        )
 
     def test_assignment_assigning_to_expression(self) -> None:
-        with self.assertRaises(ParseError) as ctx:
+        # Syntax error, but checked at runtime since expressions
+        # evaluating to lvalues are allowed. Should be parsed just fine.
+        self.assertEqual(
             parse_expression("a+b=c"),
-        self.assertEqual(ctx.exception.token, Token(TokenType.EQUAL, "="))
+            Assign(
+                BinOp(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    TokenType.PLUS,
+                    Literal(TokenType.IDENTIFIER, "b"),
+                ),
+                Literal(TokenType.IDENTIFIER, "c"),
+            ),
+        )
 
     def test_assignment_multiple_assignments_on_single_line(self) -> None:
         with self.assertRaises(ParseError) as ctx:
@@ -810,6 +937,22 @@ class TestExpressions(unittest.TestCase):
         with self.assertRaises(ParseError) as ctx:
             parse_expression("a = 2+2 (3+3)")
         self.assertEqual(ctx.exception.token, Token(TokenType.LPAREN, "("))
+
+    def test_assignment_to_list(self) -> None:
+        self.assertEqual(
+            parse_expression("a[12]=12*9"),
+            Assign(
+                ListIndex(
+                    Literal(TokenType.IDENTIFIER, "a"),
+                    Literal(TokenType.NUMBER, D("12")),
+                ),
+                BinOp(
+                    Literal(TokenType.NUMBER, D("12")),
+                    TokenType.STAR,
+                    Literal(TokenType.NUMBER, D("9")),
+                ),
+            ),
+        )
 
     def test_in_place_operation_multiple_expressions(self) -> None:
         self.assertEqual(
@@ -1243,6 +1386,86 @@ class TestExpressions(unittest.TestCase):
         with self.assertRaises(ParseError) as ctx:
             parse_expression("+")
         self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
+    def test_list_index(self) -> None:
+        self.assertEqual(
+            parse_expression("foo[3]"),
+            ListIndex(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                Literal(TokenType.NUMBER, D("3")),
+            ),
+        )
+
+    def test_list_index_with_expression(self) -> None:
+        self.assertEqual(
+            parse_expression("(1+2)[3+4]"),
+            ListIndex(
+                Group(
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("1")),
+                        TokenType.PLUS,
+                        Literal(TokenType.NUMBER, D("2")),
+                    )
+                ),
+                BinOp(
+                    Literal(TokenType.NUMBER, D("3")),
+                    TokenType.PLUS,
+                    Literal(TokenType.NUMBER, D("4")),
+                ),
+            ),
+        )
+
+    def test_list_index_with_expression_precedence(self) -> None:
+        self.assertEqual(
+            parse_expression("1+2[3+4]"),
+            BinOp(
+                Literal(TokenType.NUMBER, D("1")),
+                TokenType.PLUS,
+                ListIndex(
+                    Literal(TokenType.NUMBER, D("2")),
+                    BinOp(
+                        Literal(TokenType.NUMBER, D("3")),
+                        TokenType.PLUS,
+                        Literal(TokenType.NUMBER, D("4")),
+                    ),
+                ),
+            ),
+        )
+
+    def test_list_index_chained(self) -> None:
+        self.assertEqual(
+            parse_expression("foo[3][2][1]"),
+            ListIndex(
+                ListIndex(
+                    ListIndex(
+                        Literal(TokenType.IDENTIFIER, "foo"),
+                        Literal(TokenType.NUMBER, D("3")),
+                    ),
+                    Literal(TokenType.NUMBER, D("2")),
+                ),
+                Literal(TokenType.NUMBER, D("1")),
+            ),
+        )
+
+    def test_list_index_empty(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("foo[]")
+        self.assertEqual(ctx.exception.token, Token(TokenType.RSQBRACKET, "]"))
+
+    def test_list_index_unterminated(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("foo[1")
+        self.assertEqual(ctx.exception.token, Token(TokenType.NUMBER, "1"))
+
+    def test_list_index_empty_and_unterminated(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("foo[")
+        self.assertEqual(ctx.exception.token, Token(TokenType.LSQBRACKET, "["))
+
+    def test_list_invalid_expression(self) -> None:
+        with self.assertRaises(ParseError) as ctx:
+            parse_expression("[°]")
+        self.assertEqual(ctx.exception.token, Token(TokenType.UNKNOWN, "°"))
 
     def test_parenthesis(self) -> None:
         self.assertEqual(

@@ -39,6 +39,9 @@ class TokenType(enum.Enum):
     EQUAL = "EQUAL"  # =
     LPAREN = "LPAREN"  # (
     RPAREN = "RPAREN"  # )
+    LSQBRACKET = "LSQBRACKET"  # [
+    RSQBRACKET = "RSQBRACKET"  # ]
+    COMMA = "COMMA"  # ,
     NEWLINE = "NEWLINE"  # \n
     INDENT = "INDENT"  # Indent marker (empty).
     DEDENT = "DEDENT"  # Dedent marker (empty).

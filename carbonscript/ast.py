@@ -69,12 +69,12 @@ class Unary(Expr):
 class Literal(Expr):
     """Number, String, boolean, null, identifier. (e.g., `108`)."""
 
-    literal: TokenType
+    literal_type: TokenType
     value: LiteralValue
 
     def __repr__(self) -> str:
         class_name: str = self.__class__.__name__
-        name: str = self.literal.name
+        name: str = self.literal_type.name
         return f"{class_name}({name}, {self.value!r})"
 
 
@@ -93,12 +93,24 @@ class Group(Expr):
 class Assign(Expr):
     """Identifier and expression to assign to identifier."""
 
-    lidentifier: Literal
+    lvalue: Expr
     rexpr: Expr
 
     def __repr__(self) -> str:
         class_name: str = self.__class__.__name__
-        return f"{class_name}({self.lidentifier}, {self.rexpr!r})"
+        return f"{class_name}({self.lvalue}, {self.rexpr!r})"
+
+
+@dataclass
+class ListIndex(Expr):
+    """List to index into, and index in list."""
+
+    list_: Expr
+    index: Expr
+
+    def __repr__(self) -> str:
+        class_name: str = self.__class__.__name__
+        return f"{class_name}({self.list_}, {self.index!r})"
 
 
 @dataclass(repr=False)

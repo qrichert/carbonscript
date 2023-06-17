@@ -53,7 +53,7 @@ class TestLexer(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.script_using_all_tokens: str = (
-            'abc 123 123.456***///%+-()\n "hello"! == != > >= < <= = ° '
+            'abc 123 123.456***///%+-()[],\n "hello"! == != > >= < <= = ° '
             + "**= *= //= /= %= += -="
             + " ".join(KEYWORDS)
             + "##ml comment##\n# sl comment"
@@ -410,6 +410,44 @@ class TestLexer(unittest.TestCase):
                 Token(TokenType.PLUS, "+"),
                 Token(TokenType.NUMBER, "2"),
                 Token(TokenType.RPAREN, ")"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_square_brackets_empty(self) -> None:
+        tokens: list[Token] = lex_script("[]")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.LSQBRACKET, "["),
+                Token(TokenType.RSQBRACKET, "]"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_square_brackets_with_expression(self) -> None:
+        tokens: list[Token] = lex_script("[1,2]")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.LSQBRACKET, "["),
+                Token(TokenType.NUMBER, "1"),
+                Token(TokenType.COMMA, ","),
+                Token(TokenType.NUMBER, "2"),
+                Token(TokenType.RSQBRACKET, "]"),
+                Token(TokenType.EOF),
+            ],
+        )
+
+    def test_token_comma(self) -> None:
+        tokens: list[Token] = lex_script("123, 456")
+        self.assertListEqual(
+            tokens,
+            [
+                Token(TokenType.NUMBER, "123"),
+                Token(TokenType.COMMA, ","),
+                Token(TokenType.WHITESPACE, " "),
+                Token(TokenType.NUMBER, "456"),
                 Token(TokenType.EOF),
             ],
         )

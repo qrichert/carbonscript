@@ -25,7 +25,7 @@ block         → INDENT declaration+ DEDENT
 
 
 expr          → assignment
-assignment    → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) assignment
+assignment    → index ( "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) assignment
               | logic_or
 logic_or      → logic_and ( "or" logic_and )*
 logic_and     → equality ( "and" equality )*
@@ -35,8 +35,31 @@ term          → factor ( ( "+" | "-" ) factor )*
 factor        → power ( ( "*" | "/" | "//" | "%" ) power )*
 power         → unary ( "**" power )*
 unary         → ( "+" | "-" | "!" ) unary
-              | primary
+              | index
+index         → primary ( list_index )*
 primary       → NUMBER | STRING | BOOLEAN | NULL
-              | "(" expr ")"
+              | iterable
               | IDENTIFIER
+              | "(" expr ")"
+iterable      → list
+list          → "[" ( expr ( "," expr )* ","? )? "]"
+
+list_index   → "[" expr "]"
 ```
+
+<!--
+TODO:
+
+list_index:
+lexer OK
+parser OK
+interpreter TODO
+
+list:
+lexer OK
+parser TODO
+interpreter TODO
+
+index        → primary ( list_index | dict_index | func_call )*
+dict_index   → "{" expr "}"
+-->

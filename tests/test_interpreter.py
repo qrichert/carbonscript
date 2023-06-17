@@ -8,6 +8,7 @@ from decimal import Decimal as D
 import carbonscript.interpreter
 from carbonscript.ast import BinOp, ExprStmt, Literal, Stmt
 from carbonscript.environment import Environment
+from carbonscript.error import ParseError
 from carbonscript.interpreter import Interpreter
 from carbonscript.lexer import Lexer
 from carbonscript.parser import Parser
@@ -92,42 +93,42 @@ class TestStatements(unittest.TestCase):
 
 
 class TestBasicExpressions(unittest.TestCase):
-    def test_var_assignment(self) -> None:
+    def test_assignment_var(self) -> None:
         env = interpret_script_and_return_env("var i = 42\ni = 1337")
         self.assertEqual(env.get("i"), D("1337"))
 
-    def test_var_chained_assignment(self) -> None:
+    def test_assignment_var_chained(self) -> None:
         env = interpret_script_and_return_env("var i = null\nvar j = null\ni = j = 3")
         self.assertEqual(env.get("i"), D("3"))
         self.assertEqual(env.get("j"), D("3"))
 
-    def test_var_in_place_operation(self) -> None:
+    def test_assignment_var_in_place_operation(self) -> None:
         env = interpret_script_and_return_env("var i = 0\ni += 2*2")
         self.assertEqual(env.get("i"), D("4"))
 
-    def test_const_assignment(self) -> None:
+    def test_assignment_const(self) -> None:
         with self.assertRaises(RuntimeError):
             interpret_script("const i = 42\ni = 1337")
 
-    def test_const_in_place_operation(self) -> None:
+    def test_assignment_const_in_place_operation(self) -> None:
         with self.assertRaises(RuntimeError):
             interpret_script("const i = 42\ni += 1337")
 
-    def test_in_place_with_assignment(self) -> None:
+    def test_assignment_in_place_with_assignment(self) -> None:
         env = interpret_script_and_return_env("var i = 1\nvar j = 0\ni += j = 4")
         self.assertEqual(env.get("i"), D("5"))
         self.assertEqual(env.get("j"), D("4"))
 
-    def test_in_place_operation_chained(self) -> None:
+    def test_assignment_in_place_operation_chained(self) -> None:
         env = interpret_script_and_return_env("var a = 1\nvar b = 3\na += b += b += 1")
         self.assertEqual(env.get("a"), D("9"))
         self.assertEqual(env.get("b"), D("8"))
 
-    def test_in_place_operation_chained_with_assignment_short(self) -> None:
+    def test_assignment_in_place_operation_chained_with_assignment_short(self) -> None:
         env = interpret_script_and_return_env("var foo = 42\nfoo += (foo = 3)")
         self.assertEqual(env.get("foo"), D("6"))
 
-    def test_in_place_operation_chained_with_assignment_long(self) -> None:
+    def test_assignment_in_place_operation_chained_with_assignment_long(self) -> None:
         # RTL: 1 + (8 + (4 + (4))) (a = 17, b = 16)
         # LTR: 1 + (3 + 3 + 4) (a = 11, b = 10)
         env = interpret_script_and_return_env(
@@ -136,11 +137,48 @@ class TestBasicExpressions(unittest.TestCase):
         self.assertEqual(env.get("a"), D("17"))
         self.assertEqual(env.get("b"), D("16"))
 
-    def test_var_operation_with_var(self) -> None:
+    def test_assignment_var_operation_with_var(self) -> None:
         env = interpret_script_and_return_env(
             "const a = 3\nconst b = 5\nconst c = a * b"
         )
         self.assertEqual(env.get("c"), D("15"))
+
+    def test_assignment_list(self) -> None:
+        env = interpret_script_and_return_env("const foo = [0]\nfoo[0] = 36")
+        self.assertEqual(env.get("foo"), [D("36")])
+
+    def test_assignment_list_multiple(self) -> None:
+        env = interpret_script_and_return_env("const list = [0, 1, 2]\nlist[1] = 12")
+        self.assertEqual(env.get("list"), [D("0"), D("12"), D("2")])
+
+    def test_assignment_list_assign_list(self) -> None:
+        env = interpret_script_and_return_env("const foo = [0]\nfoo[0] = [1, 2, 3]")
+        self.assertEqual(
+            env.get("foo"),
+            [[D("1"), D("2"), D("3")]],
+        )
+
+    def test_assignment_list_assign_list_expansion(self) -> None:
+        env = interpret_script_and_return_env(
+            "const foo = [0]\nfoo[0] = [1 + 2 + 3]",
+        )
+        self.assertEqual(env.get("foo"), [[D("6")]])
+
+    def test_assignment_to_list_with_expression(self) -> None:
+        env = interpret_script_and_return_env(
+            "const list = [0, 1, 2]\nlist[1+1] = 12 * 2"
+        )
+        self.assertEqual(env.get("list"), [D("0"), D("1"), D("24")])
+
+    def test_assignment_to_list_index_out_of_range(self) -> None:
+        with self.assertRaises(RuntimeError):
+            interpret_script("const list = [0, 1, 2]\nlist[10] = 0")
+
+    def test_list_index_empty(self) -> None:
+        # This is a parse error, it should never get to the interpreter.
+        with self.assertRaises(ParseError) as ctx:
+            interpret_script("foo[]")
+        self.assertEqual(ctx.exception.token, Token(TokenType.RSQBRACKET, "]"))
 
     def test_logic_or(self) -> None:
         self.assertEqual(interpret_as_expression("true or true"), True)
@@ -245,9 +283,46 @@ class TestBasicExpressions(unittest.TestCase):
     def test_unary_minus(self) -> None:
         self.assertEqual(interpret_as_expression("-42"), D("-42"))
 
-    # TODO: What to do, maintain behavious !0 -> True !(!=0) -> False ?
+    # TODO: What to do, maintain behaviour !0 -> True !(!=0) -> False ?
     def test_unary_bang(self) -> None:
         self.assertEqual(interpret_as_expression("!42"), False)
+
+    def test_list_declaration(self) -> None:
+        # TODO: looks like it's not explicitly tested in parser either.
+        raise NotImplementedError
+
+    def test_list_declaration_empty(self) -> None:
+        # TODO: looks like it's not explicitly tested in parser either.
+        raise NotImplementedError
+
+    def test_list_expansion(self) -> None:
+        env = interpret_script_and_return_env(
+            "var bar = 5\nconst foo = [1+2, bar]\nbar = 0"
+        )
+        self.assertEqual(env.get("foo"), [D("3"), D("5")])
+        self.assertEqual(env.get("bar"), D("0"))
+
+    def test_list_index(self) -> None:
+        env = interpret_script_and_return_env(
+            "const foo = [1, 2, 3, 4]\nconst value = foo[3]"
+        )
+        self.assertEqual(env.get("value"), D("4"))
+
+    def test_list_index_with_expression(self) -> None:
+        env = interpret_script_and_return_env(
+            "const foo = [1, 2, 3, 4]\nconst value = foo[2+1]"
+        )
+        self.assertEqual(env.get("value"), D("4"))
+
+    def test_list_index_chained(self) -> None:
+        env = interpret_script_and_return_env(
+            "const foo = [1, 2, 3, [4, 5, [6, 7]]]\nconst value = foo[3][2][1]"
+        )
+        self.assertEqual(env.get("value"), D("7"))
+
+    def test_list_index_index_error_out_of_range(self) -> None:
+        with self.assertRaises(RuntimeError):
+            interpret_script("const foo = [0]\nconst value = foo[1]")
 
     def test_parenthesis(self) -> None:
         self.assertEqual(interpret_as_expression("(7+108)"), D("115"))
@@ -630,6 +705,20 @@ class TestTheBigOne(unittest.TestCase):
         with open(THE_BIG_ONE) as f:
             script: str = f.read()
         env = interpret_script_and_return_env(script)
+        self.maxDiff = None
+        # TODO: lists should be fixed when encountered
+        # Python 3.11.3 (main, Apr  5 2023, 14:14:40) [GCC 7.5.0] on linux
+        # Type "help", "copyright", "credits" or "license" for more information.
+        # >>> foo = 3
+        # >>> l = [1 + foo]
+        # >>> l[0]
+        # 4
+        # >>> foo = 1
+        # >>> l[0]
+        # 4
+        # >>> l
+        # [4]
+        # >>>
         self.assertDictEqual(
             env.to_dict(),
             {
@@ -659,6 +748,9 @@ class TestTheBigOne(unittest.TestCase):
                 "null_value": (None, True),
                 "parenthesis": (D("15"), True),
                 "identifier": (D("16"), True),
+                "list_mutable": (D("0"), False),
+                "list": ([[D("36")], [[D("5")], D("2"), D("36")]], True),
+                "list_index": (D("5"), True),
                 "variable": ("redefined value", False),
                 "chained_1": (D("9"), False),
                 "chained_2": (D("9"), False),

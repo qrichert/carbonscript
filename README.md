@@ -50,10 +50,11 @@ while (true)
 
 ## Roadmap
 
-- Iterables (`[a, b, c]`)
-- `for` loops
-- Replace unary `!` with `not`.
 - Make classes out of LiteralValues.
+- Dicts `{a:b, c:d}`
+- `for` loops
+- Ranges `[1..10:1]` (auto-expanded to lists if indexed into).
+- Replace unary `!` with `not`.
 - Add global scope to Environment.
 - Functions
 - Classes

@@ -13,6 +13,7 @@ from .ast import (
     ExprStmt,
     Group,
     IfStmt,
+    ListIndex,
     Literal,
     LogicOp,
     Stmt,
@@ -500,7 +501,7 @@ class Parser:
     def _parse_assignment(self) -> Expr | None:
         """Parse assignment.
 
-        assignment → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) assignment
+        assignment → index ( "=" | "+=" | "-=" | "*=" | "/=" | "//=" | "%=" | "**=" ) assignment
                    | logic_or
         """
         expr: Expr = self._parse_logic_or()
@@ -517,32 +518,32 @@ class Parser:
             TokenType.PERCENTEQ,
             TokenType.DBLSTAREQ,
         ):
-            if not (isinstance(expr, Literal) and expr.literal == TokenType.IDENTIFIER):
+            lvalue: Expr = expr
+            rexpr: Expr = self._parse_assignment()
+            if not rexpr:
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    "assignment target is not an identifier",
+                    "missing right part of expression",
                     self._previous(),  # "+=", etc. sign.
                 )
-            lidentifier: Literal = expr
-            rexpr: Expr = self._parse_assignment()
             if operator == TokenType.EQUAL:
-                expr = Assign(lidentifier, rexpr)
+                expr = Assign(lvalue, rexpr)
             else:
                 operator = MAP_IN_PLACE_TO_OPERATOR[operator]
-                # In place operations are syntaxic sugar (almost):
+                # In place operations are syntactic sugar (almost):
                 #
                 #   foo += 1 <=> foo = foo + 1
                 #
                 # The only difference is that rexpr must be evaluated
-                # before lidentifier (right-associative):
+                # before lvalue (right-associative):
                 #
                 #   foo += (foo = 3) <=> foo = foo + (foo = 3)
                 #       Evaluate this BEFORE the addition ↑
                 #
                 # RTL => foo = 3 + 3   (correct)
                 # LTR => foo = foo + 3 (wrong)
-                rexpr: BinOpRTL = BinOpRTL(lidentifier, operator, rexpr)
-                expr = Assign(lidentifier, rexpr)
+                rexpr: BinOpRTL = BinOpRTL(lvalue, operator, rexpr)
+                expr = Assign(lvalue, rexpr)
             return expr
         return expr
 
@@ -694,7 +695,7 @@ class Parser:
         """Parse unary.
 
         unary → ( "+" | "-" | "!" ) unary
-              | primary
+              | index
         """
         operator: TokenType
         if operator := self._consume_token_if_matches(
@@ -710,17 +711,52 @@ class Parser:
                     self._current(),
                 )
             return Unary(operator, rexpr)
-        return self._parse_primary()
+        return self._parse_index()
+
+    def _parse_index(self) -> Expr | None:
+        """Parse index.
+
+        index → primary ( list_index )*
+        """
+        expr: Expr = self._parse_primary()
+        token_type: TokenType
+        while token_type := self._consume_token_if_matches(TokenType.LSQBRACKET):
+            match token_type:
+                case TokenType.LSQBRACKET:
+                    index: Expr = self._parse_list_index()
+                    expr = ListIndex(expr, index)
+        return expr
+
+    def _parse_list_index(self) -> Expr:
+        """Parse list index.
+
+        list_index → "[" expr "]"
+        """
+        expr: Expr = self._parse_expr()
+        rsqbracket: TokenType = self._consume_token_if_matches(TokenType.RSQBRACKET)
+        if not rsqbracket:
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "unterminated list index expression, missing ']'",
+                self._previous(),
+            )
+        if not expr:
+            raise ParseError(
+                ErrorType.SYNTAX,
+                "empty list index expression",
+                self._previous(),
+            )
+        return expr
 
     def _parse_primary(self) -> Expr | None:
         """Parse primary.
 
         primary → NUMBER | STRING | BOOLEAN | NULL
-                | "(" expr ")"
+                | iterable
                 | IDENTIFIER
+                | "(" expr ")"
         """
         # TODO[refactor]: These should be functions, each.
-        literal: TokenType
         if self._consume_token_if_matches(TokenType.NUMBER):
             value: Decimal = Decimal(self._previous().lexeme)
             return Literal(TokenType.NUMBER, value)
@@ -730,22 +766,25 @@ class Parser:
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
             value: str = self._previous().lexeme
             return Literal(TokenType.IDENTIFIER, value)
-        if literal := self._consume_token_if_matches(TokenType.LITKW):
-            match self._previous().lexeme:
+        if self._consume_token_if_matches(TokenType.LITKW):
+            lexeme: str = self._previous().lexeme
+            match lexeme:
                 case "true":
-                    return Literal(literal, True)
+                    return Literal(TokenType.LITKW, True)
                 case "false":
-                    return Literal(literal, False)
+                    return Literal(TokenType.LITKW, False)
                 case "null":
-                    return Literal(literal, None)
-            assert False, "Unmatched literal keyword."
+                    return Literal(TokenType.LITKW, None)
+            assert False, f"Unmatched literal keyword {lexeme!r}."
+        if self._consume_token_if_matches(TokenType.LSQBRACKET):
+            return self._parse_iterable()
         if self._consume_token_if_matches(TokenType.LPAREN):
             expr: Expr = self._parse_expr()
             rparen: TokenType = self._consume_token_if_matches(TokenType.RPAREN)
             if not expr or not rparen:
                 raise ParseError(
                     ErrorType.SYNTAX,
-                    f"unterminated group expression, missing ')'",
+                    "unterminated group expression, missing ')'",
                     self._previous(),
                 )
             return Group(expr)
@@ -759,12 +798,42 @@ class Parser:
                 self._current(),
             )
         if not self._current().lexeme:
+            # Inserted tokens, not part of the input script.
             return None
         raise ParseError(
             ErrorType.SYNTAX,
             f"invalid symbol {self._current().lexeme!r}",
             self._current(),
         )
+
+    def _parse_iterable(self) -> Expr:
+        """Parse iterable.
+
+        iterable → list
+        list     → "[" ( expr ( "," expr )* ","? )? "]"
+        """
+        bracket_type: TokenType = self._previous().type
+        if bracket_type == TokenType.LSQBRACKET:
+            list_: list = []
+            if not self._consume_token_if_matches(TokenType.RSQBRACKET):
+                expr: Expr = self._parse_expr()
+                list_.append(expr)
+                while self._consume_token_if_matches(TokenType.COMMA):
+                    # Allowed trailing comma.
+                    if self._current().type == TokenType.RSQBRACKET:
+                        break
+                    expr = self._parse_expr()
+                    list_.append(expr)
+                if not self._consume_token_if_matches(TokenType.RSQBRACKET):
+                    raise ParseError(
+                        ErrorType.SYNTAX,
+                        "unterminated list index expression, missing ']'",
+                        self._current(),
+                    )
+            return Literal(
+                TokenType.LSQBRACKET, list_
+            )  # TODO: No need for TokenType for LiteralValues.
+        assert False, f"Unmatched bracket type {bracket_type!r}."
 
     def _consume_token_if_matches(self, *token_types) -> TokenType | None:
         for token_type in token_types:

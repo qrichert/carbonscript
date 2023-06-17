@@ -46,6 +46,12 @@ const null_value = null
 const parenthesis = 3 * (4 + 1)
 const identifier = power
 
+var list_mutable = 3
+const list = [[1], [[2+list_mutable], 2, number_int,]]
+list_mutable = 0
+const list_index = list[1][0][0]  # 5, not 2
+list[0][0] = 36
+
 var variable = "initial value"
 variable = "redefined value"
 

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from .ast import (
     Assign,
     BinOp,
@@ -10,6 +12,7 @@ from .ast import (
     ExprStmt,
     Group,
     IfStmt,
+    ListIndex,
     Literal,
     LogicOp,
     Stmt,
@@ -110,7 +113,22 @@ class Interpreter:
     def _interpret_var_decl(self, stmt: VarDecl, const: bool = False) -> None:
         identifier: str = stmt.lidentifier.value
         value: LiteralValue = self._interpret_expr(stmt.rexpr)
+        # TODO, same for dict
+        if isinstance(value, list):
+            value: list = self._expand_list(value)
         self.env.declare(identifier, value, const)
+
+    def _expand_list(self, list_: list) -> list:  # TODO: LiteralValue[list]
+        new_list: list = []
+        expr: Expr
+        for expr in list_:
+            # TODO: A bit clumsy, can't we make it cleaner once LiteralValues
+            #  have their own types? (where we don't need to check for is list?)
+            value: LiteralValue = self._interpret_expr(expr)
+            if isinstance(value, list):
+                value = self._expand_list(value)
+            new_list.append(value)
+        return new_list
 
     def _interpret_expr(self, expr: Expr) -> LiteralValue:
         if isinstance(expr, BinOp):
@@ -125,6 +143,8 @@ class Interpreter:
             return self._interpret_group(expr)
         if isinstance(expr, Assign):
             return self._interpret_assignment(expr)
+        if isinstance(expr, ListIndex):
+            return self._interpret_list_index(expr)
         assert False, f"Unmatched expression type {expr.__class__.__name__!r}."
 
     def _interpret_bin_op(self, bin_op: BinOp) -> LiteralValue:
@@ -199,7 +219,7 @@ class Interpreter:
         assert False, f"Unmatched unary operator {op.__class__.__name__!r}."
 
     def _interpret_literal(self, literal: Literal) -> LiteralValue:
-        if literal.literal == TokenType.IDENTIFIER:
+        if literal.literal_type == TokenType.IDENTIFIER:
             return self.env.get(literal.value)
         return literal.value
 
@@ -207,7 +227,57 @@ class Interpreter:
         return self._interpret_expr(group.expr)
 
     def _interpret_assignment(self, assignment: Assign) -> LiteralValue:
-        identifier: str = assignment.lidentifier.value
+        # TODO: Make sure all this is tested
+        # TODO: factorize with _interpret_assignment_to_list() ?
+        # TODO: test order of side effects from value to identifier
         value: LiteralValue = self._interpret_expr(assignment.rexpr)
-        self.env.set(identifier, value)
+        if isinstance(value, list):
+            value: list = self._expand_list(value)
+
+        lvalue: Expr = assignment.lvalue
+        if isinstance(lvalue, Literal) and lvalue.literal_type == TokenType.IDENTIFIER:
+            # TODO: It's strange that identifier names are called "value"
+            #  although it makes sense since identifiers are Literals
+            #  (same as int, string etc.). But there must be a better way.
+            var_name: str = lvalue.value
+            self.env.set(var_name, value)
+            return value
+        if isinstance(lvalue, ListIndex):
+            return self._interpret_assignment_to_list(lvalue, value)
+
+        raise RuntimeError("assigned to expression that is not an lvalue")
+
+    def _interpret_assignment_to_list(
+        self, list_index: ListIndex, value: LiteralValue
+    ) -> LiteralValue:
+        list_: Expr = self._interpret_expr(list_index.list_)
+        if not isinstance(list_, list):
+            raise RuntimeError("expression is not a list")
+        index: LiteralValue = self._interpret_expr(list_index.index)
+        if not isinstance(index, Decimal) or index != int(index):
+            raise RuntimeError("non-integer list index")  # TODO: Add Token
+        try:
+            list_[int(index)] = value
+        except IndexError:
+            raise RuntimeError(
+                f"list index out of range: {int(index)!r}"
+            )  # TODO: Add Token
+        return value
+
+    def _interpret_list_index(self, list_index: ListIndex) -> LiteralValue:
+        """#TODO: docstring"""
+        # TODO: Make Callable a Literal value once we've got functions.
+        list_: Expr = self._interpret_expr(list_index.list_)
+        # TODO : why can it bo both a Literal and a [] ? Which should it be
+        if not isinstance(list_, list):
+            raise RuntimeError("expression is not a list")  # TODO: Add Token
+        index: LiteralValue = self._interpret_expr(list_index.index)
+        if not isinstance(index, Decimal) or index != int(index):
+            raise RuntimeError("non-integer list index")  # TODO: Add Token
+        try:
+            value: LiteralValue = list_[int(index)]
+        except IndexError:
+            raise RuntimeError(
+                f"list index out of range: {int(index)!r}"
+            )  # TODO: Add Token
         return value
