@@ -101,18 +101,20 @@ class Lexer:
         for pattern, token_type in PATTERNS:
             match: re.Match
             if match_ := pattern.match(text_view):
-                value: str = match_.group(0)
+                lexeme: str = match_.group(0)
                 if token_type == TokenType.IDENTIFIER:
-                    token_type = self._update_token_type_if_identifier_is_keyword(value)
-                token: Token = self._consume_match(token_type, value)
+                    token_type = self._update_token_type_if_identifier_is_keyword(
+                        lexeme
+                    )
+                token: Token = self._consume_match(token_type, lexeme)
                 if token_type == TokenType.NEWLINE:
                     self._track_next_line()
                 return token
-        value: str = text_view[0]
-        return self._consume_match(TokenType.UNKNOWN, value)
+        lexeme: str = text_view[0]
+        return self._consume_match(TokenType.UNKNOWN, lexeme)
 
     @staticmethod
-    def _update_token_type_if_identifier_is_keyword(value: str) -> TokenType:
+    def _update_token_type_if_identifier_is_keyword(lexeme: str) -> TokenType:
         """Disambiguate between identifier and keyword.
 
         If we handle identifiers and keywords separately, a variable
@@ -127,16 +129,16 @@ class Lexer:
         This works because keywords match the identifier pattern regex.
         """
         try:
-            return KEYWORDS[value]
+            return KEYWORDS[lexeme]
         except KeyError:
             return TokenType.IDENTIFIER
 
-    def _consume_match(self, token_type: TokenType, value: str) -> Token:
+    def _consume_match(self, token_type: TokenType, lexeme: str) -> Token:
         """Extract token from script and advance playhead."""
         self._update_context(token_type)
-        token_type = self._handle_context_specific_token_types(token_type, value)
-        token: Token = self._create_token(token_type, value)
-        self._consume(value)
+        token_type = self._handle_context_specific_token_types(token_type, lexeme)
+        token: Token = self._create_token(token_type, lexeme)
+        self._consume(lexeme)
         return token
 
     def _update_context(self, token_type: TokenType) -> None:
@@ -149,7 +151,7 @@ class Lexer:
                 self._context = Context.STRING
             elif self._context == Context.STRING:
                 if ENDS_WITH_ODD_NUMBER_OF_ESCAPE_BACKSLASHES.search(
-                    self._last_token.value
+                    self._last_token.lexeme
                 ):
                     return
                 self._context = Context.NONE
@@ -172,7 +174,7 @@ class Lexer:
             return
 
     def _handle_context_specific_token_types(
-        self, token_type: TokenType, value: str
+        self, token_type: TokenType, lexeme: str
     ) -> TokenType:
         if self._context == Context.STRING or (
             # Exiting STRING.
@@ -180,38 +182,38 @@ class Lexer:
             and self._context == Context.NONE
             and self._last_token.type == token_type.STRING
         ):
-            return self._append_to_existing_or_create(TokenType.STRING, value)
+            return self._append_to_existing_or_create(TokenType.STRING, lexeme)
         if self._context == Context.MLCOMMENT or (
             # Exiting MLCOMMENT.
             token_type == TokenType.MLCOMMENT
             and self._context == Context.NONE
             and self._last_token.type == token_type.MLCOMMENT
         ):
-            return self._append_to_existing_or_create(TokenType.MLCOMMENT, value)
+            return self._append_to_existing_or_create(TokenType.MLCOMMENT, lexeme)
         if self._context == Context.SLCOMMENT:
-            return self._append_to_existing_or_create(TokenType.SLCOMMENT, value)
+            return self._append_to_existing_or_create(TokenType.SLCOMMENT, lexeme)
         return token_type
 
     def _append_to_existing_or_create(
-        self, token_type: TokenType, value: str
+        self, token_type: TokenType, lexeme: str
     ) -> TokenType:
         if self._last_token.type == token_type:
-            self._last_token.value += value
+            self._last_token.lexeme += lexeme
             return TokenType.GARBAGE
         return token_type
 
-    def _create_token(self, token_type: TokenType, value: str) -> Token:
+    def _create_token(self, token_type: TokenType, lexeme: str) -> Token:
         return Token(
             type_=token_type,
-            value=value,
+            lexeme=lexeme,
             line=self._line,
             column=self._column,
         )
 
-    def _consume(self, value: str) -> None:
-        nb_chars_in_value: int = len(value)
-        self._pos += nb_chars_in_value
-        self._column += nb_chars_in_value
+    def _consume(self, lexeme: str) -> None:
+        nb_chars_in_lexeme: int = len(lexeme)
+        self._pos += nb_chars_in_lexeme
+        self._column += nb_chars_in_lexeme
 
     def _track_next_line(self) -> None:
         self._line += 1

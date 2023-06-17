@@ -95,7 +95,7 @@ class Preprocessor:
         if self._current().type != TokenType.WHITESPACE:
             self._current_indent = 0
         else:
-            whitespace: str = self._current().value
+            whitespace: str = self._current().lexeme
             self._discard()
 
             nb_chars: int = len(whitespace)
@@ -152,14 +152,14 @@ class Preprocessor:
                 self._keep()
 
     def _clean_string(self) -> None:
-        value: str = self._current().value
-        if len(value) < 2 or not value.endswith('"'):
+        lexeme: str = self._current().lexeme
+        if len(lexeme) < 2 or not lexeme.endswith('"'):
             raise ParseError(
                 ErrorType.SYNTAX,
                 "unterminated string",
                 self._current(),
             )
-        self._current().value = value[1:-1]
+        self._current().lexeme = lexeme[1:-1]
 
     def _process_newline(self) -> None:
         last_token: Token | None = self._last_preprocessed()
@@ -255,7 +255,7 @@ class Parser:
                     | stmt
         """
         if self._consume_token_if_matches(TokenType.DECLKW):
-            match self._previous().value:
+            match self._previous().lexeme:
                 case "var":
                     return self._parse_var_decl()
                 case "const":
@@ -269,7 +269,9 @@ class Parser:
         var_decl → ("var" | "const") IDENTIFIER "=" expr "\n"
         """
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
-            lidentifier: Literal = Literal(TokenType.IDENTIFIER, self._previous().value)
+            lidentifier: Literal = Literal(
+                TokenType.IDENTIFIER, self._previous().lexeme
+            )
             if self._consume_token_if_matches(TokenType.EQUAL):
                 rexpr: Expr = self._parse_expr()
                 self._match_end_of_statement()
@@ -720,16 +722,16 @@ class Parser:
         # TODO[refactor]: These should be functions, each.
         literal: TokenType
         if self._consume_token_if_matches(TokenType.NUMBER):
-            value: Decimal = Decimal(self._previous().value)
+            value: Decimal = Decimal(self._previous().lexeme)
             return Literal(TokenType.NUMBER, value)
         if self._consume_token_if_matches(TokenType.STRING):
-            value: str = self._previous().value
+            value: str = self._previous().lexeme
             return Literal(TokenType.STRING, value)
         if self._consume_token_if_matches(TokenType.IDENTIFIER):
-            value: str = self._previous().value
+            value: str = self._previous().lexeme
             return Literal(TokenType.IDENTIFIER, value)
         if literal := self._consume_token_if_matches(TokenType.LITKW):
-            match self._previous().value:
+            match self._previous().lexeme:
                 case "true":
                     return Literal(literal, True)
                 case "false":
@@ -756,11 +758,11 @@ class Parser:
                 f"unexpected {indent}",
                 self._current(),
             )
-        if not self._current().value:
+        if not self._current().lexeme:
             return None
         raise ParseError(
             ErrorType.SYNTAX,
-            f"invalid symbol {self._current().value!r}",
+            f"invalid symbol {self._current().lexeme!r}",
             self._current(),
         )
 

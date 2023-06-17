@@ -86,7 +86,7 @@ class TestLexer(unittest.TestCase):
     def test_no_part_of_input_missing_from_tokens(self) -> None:
         script: str = self.script_using_all_tokens
         tokens: list[Token] = lex_script(script)
-        reconstructed_script = "".join([token.value for token in tokens])
+        reconstructed_script = "".join([token.lexeme for token in tokens])
         self.assertEqual(script, reconstructed_script)
 
     def test_line_and_column(self) -> None:

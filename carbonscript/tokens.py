@@ -52,10 +52,10 @@ class TokenType(enum.Enum):
 
 class Token:
     def __init__(
-        self, type_: TokenType, value: str = "", line: int = -1, column: int = -1
+        self, type_: TokenType, lexeme: str = "", line: int = -1, column: int = -1
     ) -> None:
         self.type: TokenType = type_
-        self.value: str = value
+        self.lexeme: str = lexeme
         self.line: int = line
         self.column: int = column
 
@@ -65,14 +65,14 @@ class Token:
         return all(
             [
                 self.type == other.type,
-                self.value == other.value,
+                self.lexeme == other.lexeme,
             ]
         )
 
     def __repr__(self) -> str:
         name: str = self.type.name
-        value: str = self.value
-        if len(value) > 10:
-            value = value[:9] + "…"
-        value = f", {value!r}" if value else ""
-        return f"Token({name}{value})"
+        lexeme: str = self.lexeme
+        if len(lexeme) > 10:
+            lexeme = lexeme[:9] + "…"
+        lexeme = f", {lexeme!r}" if lexeme else ""
+        return f"Token({name}{lexeme})"
