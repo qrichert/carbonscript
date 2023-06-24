@@ -302,6 +302,21 @@ class TestBasicExpressions(unittest.TestCase):
         self.assertEqual(env.get("foo"), [D("3"), D("5")])
         self.assertEqual(env.get("bar"), D("0"))
 
+    def test_list_expansion_with_variable_mutation(self) -> None:
+        env = interpret_script_and_return_env(
+            dedent(
+                """
+                var foo = 3
+                const list = [1 + foo]
+                const state_1 = list[0]
+                foo = 1
+                const state_2 = list[0]
+                """
+            )
+        )
+        self.assertEqual(env.get("state_1"), env.get("state_2"))
+        self.assertEqual(env.get("state_1"), D("4"))
+
     def test_list_index(self) -> None:
         env = interpret_script_and_return_env(
             "const foo = [1, 2, 3, 4]\nconst value = foo[3]"
@@ -705,20 +720,6 @@ class TestTheBigOne(unittest.TestCase):
         with open(THE_BIG_ONE) as f:
             script: str = f.read()
         env = interpret_script_and_return_env(script)
-        self.maxDiff = None
-        # TODO: lists should be fixed when encountered
-        # Python 3.11.3 (main, Apr  5 2023, 14:14:40) [GCC 7.5.0] on linux
-        # Type "help", "copyright", "credits" or "license" for more information.
-        # >>> foo = 3
-        # >>> l = [1 + foo]
-        # >>> l[0]
-        # 4
-        # >>> foo = 1
-        # >>> l[0]
-        # 4
-        # >>> l
-        # [4]
-        # >>>
         self.assertDictEqual(
             env.to_dict(),
             {

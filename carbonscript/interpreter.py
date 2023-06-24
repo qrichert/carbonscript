@@ -265,7 +265,6 @@ class Interpreter:
         return value
 
     def _interpret_list_index(self, list_index: ListIndex) -> LiteralValue:
-        """#TODO: docstring"""
         # TODO: Make Callable a Literal value once we've got functions.
         list_: Expr = self._interpret_expr(list_index.list_)
         # TODO : why can it bo both a Literal and a [] ? Which should it be

@@ -50,16 +50,6 @@ list_index   → "[" expr "]"
 <!--
 TODO:
 
-list_index:
-lexer OK
-parser OK
-interpreter TODO
-
-list:
-lexer OK
-parser TODO
-interpreter TODO
-
 index        → primary ( list_index | dict_index | func_call )*
 dict_index   → "{" expr "}"
 -->
