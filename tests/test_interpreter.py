@@ -288,12 +288,12 @@ class TestBasicExpressions(unittest.TestCase):
         self.assertEqual(interpret_as_expression("!42"), False)
 
     def test_list_declaration(self) -> None:
-        # TODO: looks like it's not explicitly tested in parser either.
-        raise NotImplementedError
+        env = interpret_script_and_return_env("const foo = [1+2, 3]")
+        self.assertEqual(env.get("foo"), [D("3"), D("3")])
 
     def test_list_declaration_empty(self) -> None:
-        # TODO: looks like it's not explicitly tested in parser either.
-        raise NotImplementedError
+        env = interpret_script_and_return_env("const foo = []")
+        self.assertEqual(env.get("foo"), [])
 
     def test_list_expansion(self) -> None:
         env = interpret_script_and_return_env(

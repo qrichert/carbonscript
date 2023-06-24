@@ -53,6 +53,13 @@ def parse_script(script: str) -> list[Stmt]:
     return Parser().parse(tokens)
 
 
+def parse_statement(statement: str) -> Stmt | None:
+    statements: list[Stmt] = parse_script(statement)
+    if not statements:
+        return None
+    return statements[0]
+
+
 def preprocess_script(script: str) -> list[Token]:
     tokens: list[Token] = Lexer().lex(script)
     return Preprocessor().preprocess(tokens)
@@ -1386,6 +1393,34 @@ class TestExpressions(unittest.TestCase):
         with self.assertRaises(ParseError) as ctx:
             parse_expression("+")
         self.assertEqual(ctx.exception.token, Token(TokenType.NEWLINE))
+
+    def test_list_declaration(self) -> None:
+        self.assertEqual(
+            parse_statement("const foo = [1+2, 3]"),
+            ConstDecl(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                Literal(
+                    TokenType.LSQBRACKET,
+                    [
+                        BinOp(
+                            Literal(TokenType.NUMBER, D("1")),
+                            TokenType.PLUS,
+                            Literal(TokenType.NUMBER, D("2")),
+                        ),
+                        Literal(TokenType.NUMBER, D("3")),
+                    ],
+                ),
+            ),
+        )
+
+    def test_list_declaration_empty(self) -> None:
+        self.assertEqual(
+            parse_statement("const foo = []"),
+            ConstDecl(
+                Literal(TokenType.IDENTIFIER, "foo"),
+                Literal(TokenType.LSQBRACKET, []),
+            ),
+        )
 
     def test_list_index(self) -> None:
         self.assertEqual(
