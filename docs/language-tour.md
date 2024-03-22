@@ -63,11 +63,10 @@ Double quotes can be escaped:
 They all have their in-place counterpart (`+=`, `-=`, `*=`, `/=`, `//=`,
 `%=`, `**=`).
 
-> **Note**
-> In-place operators, like the assignment operator (`=`), are right
-> associative, just like in C (but unlike in Python and in JavaScript).
-> This means that in `foo += (foo = 3)`, `(foo = 3)` is evaluated first,
-> with its side-effect.
+> **Note** In-place operators, like the assignment operator (`=`), are
+> right associative, just like in C (but unlike in Python and in
+> JavaScript). This means that in `foo += (foo = 3)`, `(foo = 3)` is
+> evaluated first, with its side-effect.
 >
 > ```coffee
 > var foo = 42
@@ -159,10 +158,10 @@ print(foo = "bar")  # Mutates "foo" and prints "bar".
 
 ## Scope
 
-Child scopes inherit and can mutate parent scopes. Local redefinition
-of a parent scope variable is possible by redeclaring a local variable
-with the same name. On the other hand it is not possible to redefine a
-local variable.
+Child scopes inherit and can mutate parent scopes. Local redefinition of
+a parent scope variable is possible by redeclaring a local variable with
+the same name. On the other hand it is not possible to redefine a local
+variable.
 
 ```coffee
 var foo = 42
@@ -232,8 +231,8 @@ else
 
 ### `while` Loop
 
-The `while` loop repeats instructions as long as the expression given
-as condition evaluates is truthy. If the expression is never truthy, the
+The `while` loop repeats instructions as long as the expression given as
+condition evaluates is truthy. If the expression is never truthy, the
 instructions will never execute.
 
 The `contine` keyword can be used in a loop to jump to the next

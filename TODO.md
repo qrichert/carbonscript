@@ -1,7 +1,6 @@
 # TODO
 
-Use slots for dataclasses:
-https://stackoverflow.com/a/69661861
+Use slots for dataclasses: https://stackoverflow.com/a/69661861
 
 Use named tuples for frames and environment + add slots to scope/frames
 (and any objects that may be instantiated a lot of times.)

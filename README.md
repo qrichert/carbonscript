@@ -61,4 +61,5 @@ while (true)
 
 ## First Time Looking at Interpreter Code?
 
-Check out the [Interpreter Crash Course](docs/interpreter-crash-course.md).
+Check out the
+[Interpreter Crash Course](docs/interpreter-crash-course.md).

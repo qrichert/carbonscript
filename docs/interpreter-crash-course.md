@@ -37,8 +37,8 @@ In short, the lexer identifies language patterns in raw input, in
 preparation for the next step: parsing.
 
 One way to implement this is with regular expressions. (Doing the
-matching by hand works too, but the regular expression engine happens
-to be pretty good at matching a regular language, so why not leverage
+matching by hand works too, but the regular expression engine happens to
+be pretty good at matching a regular language, so why not leverage
 that).
 
 Start by defining patterns:
@@ -225,11 +225,11 @@ Note the two other novelties:
   function names, etc.).
 
 Terminology note: The groups on the left are called "non-terminals",
-which represent higher-level constructs. The sequences on the right
-are made up of non-terminals and other symbols called "terminals", which
-are the basic units or atomic elements of the language (numbers,
-operators, parentheses, etc.). The algorithm we are using is called
-"recursive descent parsing".
+which represent higher-level constructs. The sequences on the right are
+made up of non-terminals and other symbols called "terminals", which are
+the basic units or atomic elements of the language (numbers, operators,
+parentheses, etc.). The algorithm we are using is called "recursive
+descent parsing".
 
 Now if we try and build the tree with the new rules, we end up with the
 correct result:
@@ -393,9 +393,9 @@ Another way it to rewrite it like this:
 group 1 → group 2 ( "+" group 2 )*
 ```
 
-Which you can read "`group 2`, followed by: a `+` and a `group 2`,
-an infinite number of times or not at all" (The `*` has the same meaning
-as in regular expression).
+Which you can read "`group 2`, followed by: a `+` and a `group 2`, an
+infinite number of times or not at all" (The `*` has the same meaning as
+in regular expression).
 
 Let's try it:
 
@@ -410,8 +410,8 @@ Let's try it:
    2. `group 1` needs a `group 2`. OK.
    3. `group 2` matches `3`. OK.
 5. (while matches: #3)
-   1. `group 1` needs a `+`. KO.
-      Reason of KO: We have consumed all the tokens.
+   1. `group 1` needs a `+`. KO. Reason of KO: We have consumed all the
+      tokens.
 6. (end while)
 
 This second version prevents us from adding extra rules to the grammar.
@@ -433,8 +433,8 @@ primary    → NUMBER
 
 The translation to code is pretty straightforward:
 
-- Non-terminals (`group 1`, `group 2`, etc.) translate to functions.
-  If you encounter a non-terminal, you call its function.
+- Non-terminals (`group 1`, `group 2`, etc.) translate to functions. If
+  you encounter a non-terminal, you call its function.
 - Terminals (`+`, `NUMBER`, etc.) match and consume tokens.
 - `|` translate to `if/else if/else` statements.
 - `*` translate to loops.
