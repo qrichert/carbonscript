@@ -8,21 +8,10 @@ end-users.
 Being a mix of Python and C-style/JavaScripty syntax, it should be quite
 easy to pick up.
 
-## Roadmap
+## First Time Looking at Interpreter Code?
 
-- Iterables (`[a, b, c]`)
-- `for` loops
-- Replace unary `!` with `not`.
-- Make classes out of LiteralValues.
-- Add global scope to Environment.
-- Functions
-- Classes
-- Refactor error handling.
-- Standard library (small).
-- Python bindings and standard library overrides.
-- Resource management/usage limits.
-- Refactoring/cleanup
-- Optimizations
+Check out the
+[Interpreter Crash Course](docs/interpreter-crash-course.md).
 
 ## Language Tour
 
@@ -59,7 +48,18 @@ while (true)
     break
 ```
 
-## First Time Looking at Interpreter Code?
+## Roadmap
 
-Check out the
-[Interpreter Crash Course](docs/interpreter-crash-course.md).
+- Iterables (`[a, b, c]`)
+- `for` loops
+- Replace unary `!` with `not`.
+- Make classes out of LiteralValues.
+- Add global scope to Environment.
+- Functions
+- Classes
+- Refactor error handling.
+- Standard library (small).
+- Python bindings and standard library overrides.
+- Resource management/usage limits.
+- Refactoring/cleanup
+- Optimizations
